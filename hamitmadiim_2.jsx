@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useContext, createContext, useRef } from "react";
+import { createPortal } from "react-dom";
 
 const DAYS_HE = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
 const DAYS_FULL_HE = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
@@ -231,7 +232,7 @@ function A11yBtn() {
         aria-label="הגדרות נגישות" aria-expanded={open}>
         ♿
       </button>
-      {open && (
+      {open && createPortal(
         <div style={S.a11yOverlay} onClick={() => setOpen(false)}
           role="dialog" aria-modal="true" aria-labelledby="a11y-title">
           <div style={S.a11yPanel} onClick={e => e.stopPropagation()}>
@@ -272,7 +273,8 @@ function A11yBtn() {
 
             <button style={S.a11yClose} onClick={() => setOpen(false)}>סגור ✕</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
