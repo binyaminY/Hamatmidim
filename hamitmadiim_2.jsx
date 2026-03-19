@@ -408,16 +408,34 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
   });
   const [daysMode, setDaysMode] = useState(false);
   const [daysCount, setDaysCount] = useState(40);
+  // paceMode: user picks study days + pages/day → auto-calc end date
+  const [paceMode, setPaceMode] = useState(false);
+  const [pacePerDay, setPacePerDay] = useState(2);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const toggleRest = (d) => set("restDays", form.restDays.includes(d) ? form.restDays.filter(x=>x!==d) : [...form.restDays,d]);
 
-  // When daysMode is on and daysCount/startDate changes, auto-calc end date
+  // When daysMode: auto-calc end date from daysCount
   useEffect(() => {
     if (daysMode && form.startDate && daysCount > 0) {
       set("endDate", dateKey(addDays(new Date(form.startDate), daysCount)));
     }
   }, [daysMode, daysCount, form.startDate]); // eslint-disable-line
+
+  // When paceMode: calc studyDays needed, then find end date
+  useEffect(() => {
+    if (!paceMode || !form.startDate || pacePerDay <= 0 || form.totalUnits <= 0) return;
+    const studyDaysNeeded = Math.ceil(form.totalUnits / pacePerDay);
+    const studyDOW = DAYS_FULL_HE.map((_,i) => i).filter(i => !form.restDays.includes(i));
+    if (studyDOW.length === 0) return;
+    let cur = new Date(form.startDate);
+    let counted = 0;
+    for (let i = 0; i < 3650; i++) {
+      if (studyDOW.includes(cur.getDay())) counted++;
+      if (counted >= studyDaysNeeded) { set("endDate", dateKey(cur)); return; }
+      cur = addDays(cur, 1);
+    }
+  }, [paceMode, pacePerDay, form.totalUnits, form.startDate, form.restDays]); // eslint-disable-line
 
   const preview = useMemo(()=>buildSchedule({...form,completedUnits:0}),[form]);
   const studyDays = Object.keys(preview).filter(k=>!preview[k].rest).length;
@@ -448,16 +466,34 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
           </Fld>
           {/* Toggle: end date vs days count */}
           <div style={S.daysModeRow}>
-            <button style={{...S.daysModeBtn,...(!daysMode?S.daysModeBtnActive:{})}}
-              onClick={()=>setDaysMode(false)} aria-pressed={!daysMode}>
+            <button style={{...S.daysModeBtn,...(!daysMode&&!paceMode?S.daysModeBtnActive:{})}}
+              onClick={()=>{setDaysMode(false);setPaceMode(false);}} aria-pressed={!daysMode&&!paceMode}>
               תאריך סיום
             </button>
             <button style={{...S.daysModeBtn,...(daysMode?S.daysModeBtnActive:{})}}
-              onClick={()=>setDaysMode(true)} aria-pressed={daysMode}>
+              onClick={()=>{setDaysMode(true);setPaceMode(false);}} aria-pressed={daysMode}>
               כמה ימים?
             </button>
+            <button style={{...S.daysModeBtn,...(paceMode?S.daysModeBtnActive:{})}}
+              onClick={()=>{setPaceMode(true);setDaysMode(false);}} aria-pressed={paceMode}>
+              לפי קצב
+            </button>
           </div>
-          {daysMode ? (
+          {paceMode ? (
+            <Fld label="כמה דפים אתה לומד ביום לימוד?">
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <input style={{...S.inp, flex:1}} type="number" min={1} value={pacePerDay}
+                  onChange={e=>setPacePerDay(Math.max(1,Number(e.target.value)))}
+                  aria-label="דפים ביום"/>
+                {form.endDate && <span style={{fontSize:12,color:"var(--gd)",fontWeight:700,whiteSpace:"nowrap"}}>
+                  עד {form.endDate}
+                </span>}
+              </div>
+              <div style={{fontSize:11,color:"var(--txs)",marginTop:6}}>
+                הסיום מחושב לפי ימי הלימוד שתבחר למטה
+              </div>
+            </Fld>
+          ) : daysMode ? (
             <Fld label="בכמה ימים אתה רוצה לסיים?">
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <input style={{...S.inp, flex:1}} type="number" min={1} value={daysCount}
@@ -510,8 +546,11 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
           <button style={S.deleteFullBtn} onClick={() => setConfirmDelete(true)}
             aria-label="מחק תוכנית זו">🗑 מחק תוכנית זו</button>
         )}
-        <div style={{height:40}}/>
+        <div style={{height:80}}/>
       </div>
+      {valid && (
+        <button style={S.doneFab} onClick={()=>onSave(form)} aria-label="בוצע, שמור תוכנית">✓</button>
+      )}
       {confirmDelete && (
         <div style={S.overlay} role="dialog" aria-modal="true" aria-labelledby="dlg2-title"
           onClick={() => setConfirmDelete(false)}>
@@ -923,6 +962,7 @@ const S = {
   emptyTitle:{fontSize:18,fontWeight:800,color:"var(--tx)",marginBottom:6},
   emptyDesc:{fontSize:14,color:"var(--txm)"},
   fab:{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",background:"var(--g)",color:"#fff",borderRadius:40,padding:"14px 34px",fontWeight:800,fontSize:15,border:"none",cursor:"pointer",boxShadow:"0 6px 24px #25d36645",zIndex:20,fontFamily:"inherit",animation:"fabPulse 2.5s ease-in-out infinite",minHeight:48},
+  doneFab:{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"var(--g)",color:"#fff",width:62,height:62,borderRadius:"50%",fontSize:28,fontWeight:900,border:"none",cursor:"pointer",boxShadow:"0 6px 24px #25d36660",zIndex:20,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"},
   sec:{marginTop:22},
   secLabel:{fontSize:12,fontWeight:800,color:"var(--gd)",letterSpacing:0.7,textTransform:"uppercase",marginBottom:10},
   fld:{marginBottom:12},
