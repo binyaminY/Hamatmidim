@@ -320,7 +320,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
     <div style={S.screen}>
       <div style={S.splashHeader}>
         <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",padding:"8px 12px",borderBottom:"1px solid rgba(255,255,255,0.12)"}}>
-          <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"4px 6px",backdropFilter:"blur(8px)"}}>
+          <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"4px 6px"}}>
             <ControlBtns/>
           </div>
         </div>
