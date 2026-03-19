@@ -366,10 +366,14 @@ function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
                 </div>
                 <div style={S.pctBadge} aria-label={`${pct}% הושלם`}>{pct}%</div>
               </div>
-              <ProgressBar pct={pct} />
-              <button style={S.cardDeleteIcon}
-                onClick={e => { e.stopPropagation(); setConfirmId(plan.id); }}
-                aria-label={`מחק תוכנית ${plan.name}`}>🗑</button>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+                <div style={{flex:1}}>
+                  <ProgressBar pct={pct} />
+                </div>
+                <button style={S.cardDeleteIcon}
+                  onClick={e => { e.stopPropagation(); setConfirmId(plan.id); }}
+                  aria-label={`מחק תוכנית ${plan.name}`}>🗑</button>
+              </div>
             </div>
           );
         })}
@@ -895,7 +899,7 @@ const S = {
   planSub:{fontSize:13,color:"var(--txs)",marginTop:2},
   planMeta:{display:"flex",gap:12,fontSize:11,color:"var(--txs)",marginTop:8,flexWrap:"wrap"},
   pctBadge:{background:"var(--gl)",borderRadius:20,padding:"4px 10px",fontSize:13,fontWeight:800,color:"var(--gd)",flexShrink:0,alignSelf:"flex-start"},
-  cardDeleteIcon:{position:"absolute",bottom:12,left:12,background:"var(--red-bg)",border:"1.5px solid var(--red-border)",borderRadius:10,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,cursor:"pointer",flexShrink:0},
+  cardDeleteIcon:{background:"var(--red-bg)",border:"1.5px solid var(--red-border)",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,cursor:"pointer",flexShrink:0},
   deleteFullBtn:{width:"100%",padding:"14px 0",marginTop:12,background:"var(--red-bg)",border:"1.5px solid var(--red-border)",borderRadius:R,fontSize:15,fontWeight:700,color:"var(--red)",cursor:"pointer",fontFamily:"inherit"},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24},
   dialog:{background:"var(--sur)",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:320,textAlign:"center",boxShadow:"0 8px 40px #0005"},
@@ -1024,10 +1028,10 @@ const S = {
   a11yFsBtnActive:{background:"var(--g)",color:"#fff",border:"1.5px solid var(--g)"},
   a11yToggleRow:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14},
   a11yToggleLbl:{fontSize:14,fontWeight:600,color:"var(--tx)"},
-  a11ySwitch:{width:50,height:28,borderRadius:14,background:"var(--gm)",border:"none",cursor:"pointer",position:"relative",padding:0,flexShrink:0},
+  a11ySwitch:{width:52,height:30,borderRadius:15,background:"#b0b8c1",border:"none",cursor:"pointer",position:"relative",padding:0,flexShrink:0,transition:"background 0.2s"},
   a11ySwitchOn:{background:"var(--g)"},
-  a11yThumb:{width:22,height:22,borderRadius:"50%",background:"#fff",position:"absolute",top:3,right:3,transition:"right 0.18s,left 0.18s",boxShadow:"0 1px 4px #0003"},
-  a11yThumbOn:{right:"unset",left:3},
+  a11yThumb:{width:24,height:24,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:3,transition:"left 0.2s",boxShadow:"0 1px 5px #0004"},
+  a11yThumbOn:{left:"unset",right:3},
   a11yClose:{width:"100%",padding:"13px",marginTop:4,background:"var(--gl)",border:"none",borderRadius:12,fontSize:14,fontWeight:700,color:"var(--gd)",cursor:"pointer",fontFamily:"inherit"},
 };
 
