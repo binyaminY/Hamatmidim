@@ -158,7 +158,14 @@ export default function App() {
     const updated = [...plans, np];
     setPlans(updated);
     setActivePlanId(np.id);
-    setScreen("calendar");
+    setScreen("plans");
+  };
+  const [generalNotes, setGeneralNotes] = useState(() => {
+    try { const s = localStorage.getItem("hmGeneralNotes"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const updateGeneralNotes = (notes) => {
+    setGeneralNotes(notes);
+    try { localStorage.setItem("hmGeneralNotes", JSON.stringify(notes)); } catch {}
   };
 
   useEffect(() => {
@@ -192,8 +199,13 @@ export default function App() {
           {screen === "plans" && (
             <PlansScreen plans={plans} activePlanId={activePlanId}
               onSelect={id => { setActivePlanId(id); setScreen("calendar"); }}
+              onSelectNotes={id => { setActivePlanId(id); setScreen("notes"); }}
               onNew={() => { setEditingPlan(null); setScreen("create"); }}
-              onDelete={deletePlan} />
+              onDelete={deletePlan}
+              onUpdatePlan={updatePlan}
+              generalNotes={generalNotes}
+              onUpdateGeneralNotes={updateGeneralNotes}
+              onOpenNotebook={() => setScreen("notebook")} />
           )}
           {screen === "create" && (
             <CreateScreen initial={editingPlan}
@@ -205,6 +217,13 @@ export default function App() {
             <PlanShell plan={activePlan} screen={screen} setScreen={setScreen}
               onUpdate={updatePlan}
               onEditPlan={() => { setEditingPlan(activePlan); setScreen("create"); }} />
+          )}
+          {screen === "notebook" && (
+            <NotebookScreen
+              plans={plans} generalNotes={generalNotes}
+              onUpdateGeneralNotes={updateGeneralNotes} onUpdatePlan={updatePlan}
+              onSelectNotes={id => { setActivePlanId(id); setScreen("notes"); }}
+              onBack={() => setScreen("plans")} />
           )}
         </div>
       </A11yCtx.Provider>
@@ -315,9 +334,152 @@ function IntroScreen({ onDone }) {
   );
 }
 
-function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
+const SECTION_COLORS = [
+  { bg:"#E8F4FD", border:"#90CAF9", text:"#0D47A1", light:"#BBDEFB" },
+  { bg:"#E8F5E9", border:"#A5D6A7", text:"#1B5E20", light:"#C8E6C9" },
+  { bg:"#FFF3E0", border:"#FFCC80", text:"#E65100", light:"#FFE0B2" },
+  { bg:"#F3E5F5", border:"#CE93D8", text:"#4A148C", light:"#E1BEE7" },
+  { bg:"#FBE9E7", border:"#FFAB91", text:"#BF360C", light:"#FFCCBC" },
+  { bg:"#E0F2F1", border:"#80CBC4", text:"#004D40", light:"#B2DFDB" },
+];
+
+function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePlan, onSelectNotes, onBack }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [notePageRef, setNotePageRef] = useState("");
+  const [notePlanId, setNotePlanId] = useState(plans[0]?.id || "");
+  const [noteGeneral, setNoteGeneral] = useState(false);
+
+  const saveNote = () => {
+    if (!noteContent.trim()) return;
+    const note = { id: uid(), date: todayKey(), title: noteTitle.trim(), content: noteContent.trim(), pageRef: notePageRef.trim() };
+    if (noteGeneral) {
+      onUpdateGeneralNotes([...(generalNotes || []), note]);
+    } else {
+      const plan = plans.find(p => p.id === notePlanId);
+      if (!plan) return;
+      onUpdatePlan({ ...plan, notes: [...(plan.notes || []), note] });
+    }
+    setNoteTitle(""); setNoteContent(""); setNotePageRef(""); setAddOpen(false);
+  };
+
+  const deleteGeneral = (id) => onUpdateGeneralNotes((generalNotes||[]).filter(n => n.id !== id));
+  const deletePlanNote = (plan, id) => onUpdatePlan({ ...plan, notes: (plan.notes||[]).filter(n => n.id !== id) });
+
+  const renderCard = (n, onDelete, onClick) => (
+    <div key={n.id} style={{...S.noteCard, cursor: onClick ? "pointer" : "default"}} onClick={onClick}>
+      <div style={S.noteCardHeader}>
+        <div style={S.noteCardLeft}>
+          {n.pageRef && <span style={S.notePageRef}>{n.pageRef}</span>}
+          <span style={S.noteTitle}>{n.title || n.content.slice(0,50)+(n.content.length>50?"...":"")}</span>
+          <span style={S.noteDate}>{n.date}</span>
+        </div>
+        <button style={S.noteDelete} onClick={e => { e.stopPropagation(); onDelete(n.id); }} aria-label="מחק">✕</button>
+      </div>
+      {n.title && <div style={S.noteContent}>{n.content}</div>}
+      {!n.title && <div style={S.noteContent}>{n.content}</div>}
+    </div>
+  );
+
+  return (
+    <div style={S.screen}>
+      <TopBar title="הפנקס שלי 📓" onBack={onBack} rightEl={<ControlBtns/>}/>
+      <div style={S.tabContent}>
+        {(generalNotes||[]).length === 0 && plans.every(p => !(p.notes||[]).length) && (
+          <div style={S.emptyWrap}>
+            <div style={S.emptyIcon}>📓</div>
+            <div style={S.emptyTitle}>הפנקס ריק</div>
+            <div style={S.emptyDesc}>לחץ + כדי להוסיף הערה ראשונה</div>
+          </div>
+        )}
+        {(generalNotes||[]).length > 0 && (
+          <div style={{marginTop:12}}>
+            <div style={S.notesSectionHeader}>📌 הערות כלליות</div>
+            {[...(generalNotes||[])].reverse().map(n => renderCard(n, deleteGeneral, null))}
+          </div>
+        )}
+        {plans.map((p, idx) => (p.notes||[]).length > 0 && (
+          <div key={p.id} style={{marginTop:12,borderRadius:12,overflow:"hidden",border:`1.5px solid ${SECTION_COLORS[idx % SECTION_COLORS.length].border}`}}>
+            <div style={{background:SECTION_COLORS[idx % SECTION_COLORS.length].bg, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between"}}
+              onClick={() => onSelectNotes(p.id)}>
+              <span style={{fontSize:13,fontWeight:800,color:SECTION_COLORS[idx % SECTION_COLORS.length].text}}>📚 {p.name}</span>
+              <span style={{color:SECTION_COLORS[idx % SECTION_COLORS.length].text, fontSize:14}}>›</span>
+            </div>
+            {[...(p.notes||[])].reverse().map(n => renderCard(n, (id) => deletePlanNote(p, id), () => onSelectNotes(p.id)))}
+          </div>
+        ))}
+        <div style={{height:80}}/>
+      </div>
+      <button style={S.fab} onClick={() => setAddOpen(true)} aria-label="הוסף הערה">+ הערה חדשה</button>
+      {addOpen && createPortal(
+        <div style={S.a11yOverlay} onClick={() => setAddOpen(false)}>
+          <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
+            <div style={S.a11yTitle}>✏️ הוספת הערה</div>
+            <div style={{...S.daysModeRow, marginBottom:14}}>
+              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(false)}>📚 לספר</button>
+              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(true)}>📌 כללית</button>
+            </div>
+            {!noteGeneral && plans.length > 0 && (
+              <div style={S.fld}>
+                <label style={S.fldLbl}>ספר / תוכנית</label>
+                <select style={S.inp} value={notePlanId} onChange={e => setNotePlanId(e.target.value)}>
+                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div style={S.fld}>
+              <label style={S.fldLbl}>כותרת (אופציונלי)</label>
+              <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={noteTitle} onChange={e => setNoteTitle(e.target.value)} maxLength={80}/>
+            </div>
+            <div style={S.fld}>
+              <label style={S.fldLbl}>מה למדתי *</label>
+              <textarea style={{...S.inp, minHeight:100, resize:"vertical"}} placeholder="רשום כאן..." value={noteContent} onChange={e => setNoteContent(e.target.value)} maxLength={1000}/>
+            </div>
+            <div style={S.fld}>
+              <label style={S.fldLbl}>עמוד / פרק (אופציונלי)</label>
+              <input style={S.inp} placeholder="למשל: עמ׳ 45–62" value={notePageRef} onChange={e => setNotePageRef(e.target.value)} maxLength={40}/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button style={S.dialogCancel} onClick={() => setAddOpen(false)}>ביטול</button>
+              <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: noteContent.trim()?1:0.5}} onClick={saveNote} disabled={!noteContent.trim()}>שמור ✓</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDelete, onUpdatePlan, generalNotes, onUpdateGeneralNotes, onOpenNotebook }) {
   const [confirmId, setConfirmId] = useState(null);
   const confirmPlan = plans.find(p => p.id === confirmId);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [notePageRef, setNotePageRef] = useState("");
+  const [notePlanId, setNotePlanId] = useState("");
+  const [noteGeneral, setNoteGeneral] = useState(false);
+
+  const openNoteForm = () => {
+    setNotePlanId(plans[0]?.id || "");
+    setNoteTitle(""); setNoteContent(""); setNotePageRef("");
+    setNoteGeneral(false);
+    setNoteOpen(true);
+  };
+  const saveNote = () => {
+    if (!noteContent.trim()) return;
+    const note = { id: uid(), date: todayKey(), title: noteTitle.trim(), content: noteContent.trim(), pageRef: notePageRef.trim() };
+    if (noteGeneral) {
+      onUpdateGeneralNotes([...(generalNotes || []), note]);
+    } else {
+      const plan = plans.find(p => p.id === notePlanId);
+      if (!plan) return;
+      onUpdatePlan({ ...plan, notes: [...(plan.notes || []), note] });
+    }
+    setNoteOpen(false);
+  };
   return (
     <div style={S.screen}>
       <div style={S.splashHeader}>
@@ -335,6 +497,59 @@ function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
       <div style={S.appQuoteWrap}>
         <span style={S.appQuoteBubble}>{getDailyQuote()}</span>
       </div>
+      {(() => {
+        const gNotes = (generalNotes || []).slice().reverse();
+        const planGroups = plans.map(p => ({ plan: p, notes: (p.notes||[]).slice().reverse() })).filter(g => g.notes.length > 0);
+        const hasAny = gNotes.length > 0 || planGroups.length > 0;
+        const renderCard = (n, i, arr, onClick) => (
+          <div key={n.id}
+            style={{...S.homeNoteCard, ...(i===arr.length-1?{borderBottom:"none"}:{}), ...(onClick?{cursor:"pointer"}:{})}}
+            onClick={onClick}>
+            <div style={S.homeNoteAccent}/>
+            <div style={S.homeNoteBody}>
+              <div style={S.homeNoteText}>{n.title || n.content.slice(0,70)+(n.content.length>70?"...":"")}</div>
+              {n.title && <div style={S.homeNotePreview}>{n.content.slice(0,55)}{n.content.length>55?"...":""}</div>}
+              <div style={S.homeNoteFooter}>
+                {n.pageRef && <span style={S.homeNotePageRef}>{n.pageRef}</span>}
+                <span style={S.homeNoteDate}>{n.date}</span>
+              </div>
+            </div>
+          </div>
+        );
+        return (
+          <div style={S.homeNotesWrap}>
+            <div style={S.homeNotesCover}>
+              <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={onOpenNotebook}>
+                <span style={{fontSize:20}}>📓</span>
+                <span style={S.homeNotesCoverTitle}>הפנקס שלי ›</span>
+              </div>
+              <button style={S.homeNoteAddBtn} onClick={openNoteForm} aria-label="הוסף הערה">+ הוסף</button>
+            </div>
+            <div style={S.homeNotesList}>
+              {!hasAny ? (
+                <div style={{...S.homeNotesEmpty, cursor:"pointer"}} onClick={openNoteForm}>✏️ עדיין אין הערות — לחץ להוספה</div>
+              ) : (
+                <>
+                  {/* הערות כלליות */}
+                  {gNotes.length > 0 && (
+                    <>
+                      <div style={S.notesSectionHeader}>📌 הערות כלליות</div>
+                      {gNotes.map((n,i) => renderCard(n,i,gNotes,null))}
+                    </>
+                  )}
+                  {/* הערות לפי ספר */}
+                  {planGroups.map(({ plan, notes }) => (
+                    <div key={plan.id}>
+                      <div style={{...S.notesSectionHeader, cursor:"pointer"}} onClick={() => onSelectNotes(plan.id)}>📚 {plan.name} ›</div>
+                      {notes.map((n,i) => renderCard(n,i,notes,() => onSelectNotes(plan.id)))}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       <div style={S.scrollArea}>
         {plans.length === 0 && (
           <div style={S.emptyWrap}>
@@ -360,7 +575,12 @@ function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
               onClick={() => onSelect(plan.id)}
               onKeyDown={e => { if (e.key==="Enter"||e.key===" ") { e.preventDefault(); onSelect(plan.id); }}}>
               <div style={S.planCardRow}>
-                <div style={S.planIcon} aria-hidden="true">📚</div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                  <div style={S.planIcon} aria-hidden="true">📚</div>
+                  <button style={S.cardNoteBtn}
+                    onClick={e => { e.stopPropagation(); setNotePlanId(plan.id); setNoteTitle(""); setNoteContent(""); setNotePageRef(""); setNoteOpen(true); }}
+                    aria-label={`הוסף הערה ל${plan.name}`}>✏️</button>
+                </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={S.planName}>{plan.name}</div>
                   <div style={S.planMeta}>
@@ -381,9 +601,54 @@ function PlansScreen({ plans, activePlanId, onSelect, onNew, onDelete }) {
             </div>
           );
         })}
+        <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:12,color:"var(--txs)"}}>נוצר על ידי בנימין יונה</div>
         <div style={{height:100}}/>
       </div>
       <button style={S.fab} onClick={onNew} className="fab-pulse" aria-label="יצירת תוכנית חדשה">+ תוכנית חדשה</button>
+      {noteOpen && createPortal(
+        <div style={S.a11yOverlay} onClick={() => setNoteOpen(false)}>
+          <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
+            <div style={S.a11yTitle}>✏️ הוספת הערה</div>
+            {/* סוג הערה */}
+            <div style={{...S.daysModeRow, marginBottom:14}}>
+              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}}
+                onClick={() => setNoteGeneral(false)}>📚 לספר</button>
+              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}}
+                onClick={() => setNoteGeneral(true)}>📌 כללית</button>
+            </div>
+            {!noteGeneral && plans.length > 0 && (
+              <div style={S.fld}>
+                <label style={S.fldLbl}>ספר / תוכנית</label>
+                <select style={S.inp} value={notePlanId} onChange={e => setNotePlanId(e.target.value)}>
+                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div style={S.fld}>
+              <label style={S.fldLbl}>כותרת (אופציונלי)</label>
+              <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={noteTitle}
+                onChange={e => setNoteTitle(e.target.value)} maxLength={80}/>
+            </div>
+            <div style={S.fld}>
+              <label style={S.fldLbl}>מה למדתי *</label>
+              <textarea style={{...S.inp, minHeight:100, resize:"vertical"}}
+                placeholder="רשום כאן את הסיכום, התובנה, או הרעיון..."
+                value={noteContent} onChange={e => setNoteContent(e.target.value)} maxLength={1000}/>
+            </div>
+            <div style={S.fld}>
+              <label style={S.fldLbl}>עמוד / פרק (אופציונלי)</label>
+              <input style={S.inp} placeholder="למשל: עמ׳ 45–62" value={notePageRef}
+                onChange={e => setNotePageRef(e.target.value)} maxLength={40}/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button style={S.dialogCancel} onClick={() => setNoteOpen(false)}>ביטול</button>
+              <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: noteContent.trim() ? 1 : 0.5}}
+                onClick={saveNote} disabled={!noteContent.trim()}>שמור תובנה ✓</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       {confirmId && (
         <div style={S.overlay} role="dialog" aria-modal="true" aria-labelledby="dlg-title"
           onClick={() => setConfirmId(null)}>
@@ -447,7 +712,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
   return (
     <div style={S.screen}>
       <TopBar title={initial?"עריכת תוכנית":"יצירת תוכנית חדשה"} onBack={onBack}
-        backLabel="סיימתי" rightEl={<ControlBtns/>}/>
+        rightEl={<ControlBtns/>}/>
       <div style={S.scrollArea}>
         <Sec title="פרטי התוכנית">
           <Fld label="שם התוכנית">
@@ -466,46 +731,66 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
             <input style={S.inp} type="date" value={form.startDate}
               onChange={e=>set("startDate",e.target.value)} aria-label="תאריך התחלה"/>
           </Fld>
-          {/* Toggle: end date vs days count */}
+          {/* Mode toggle */}
           <div style={S.daysModeRow}>
             <button style={{...S.daysModeBtn,...(!daysMode&&!paceMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setDaysMode(false);setPaceMode(false);}} aria-pressed={!daysMode&&!paceMode}>
-              תאריך סיום
+              תאריך קבוע
             </button>
             <button style={{...S.daysModeBtn,...(daysMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setDaysMode(true);setPaceMode(false);}} aria-pressed={daysMode}>
-              כמה ימים?
+              לפי ימים
             </button>
             <button style={{...S.daysModeBtn,...(paceMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setPaceMode(true);setDaysMode(false);}} aria-pressed={paceMode}>
-              לפי קצב
+              לפי ההספק שלי
             </button>
           </div>
+
           {paceMode ? (
-            <Fld label="כמה דפים אתה לומד ביום לימוד?">
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <input style={{...S.inp, flex:1}} type="number" min={1} value={pacePerDay}
-                  onChange={e=>setPacePerDay(Math.max(1,Number(e.target.value)))}
-                  aria-label="דפים ביום"/>
-                {form.endDate && <span style={{fontSize:12,color:"var(--gd)",fontWeight:700,whiteSpace:"nowrap"}}>
-                  עד {form.endDate}
-                </span>}
-              </div>
-              <div style={{fontSize:11,color:"var(--txs)",marginTop:6}}>
-                הסיום מחושב לפי ימי הלימוד שתבחר למטה
-              </div>
-            </Fld>
+            <>
+              <Fld label={`כמה ${form.unitLabel || "עמודים"} אתה לומד ביום?`}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <button style={S.paceStepper} onClick={()=>setPacePerDay(v=>Math.max(1,v-1))} aria-label="הפחת">−</button>
+                  <span style={S.paceVal}>{pacePerDay}</span>
+                  <button style={S.paceStepper} onClick={()=>setPacePerDay(v=>v+1)} aria-label="הוסף">+</button>
+                  <span style={{fontSize:13,color:"var(--txm)",fontWeight:600}}>{form.unitLabel || "עמודים"} ביום</span>
+                </div>
+              </Fld>
+              {form.endDate && form.startDate && (
+                <div style={S.paceResult}>
+                  <span style={S.paceResultIcon}>📅</span>
+                  <div>
+                    <div style={S.paceResultLabel}>תאריך יעד מחושב</div>
+                    <div style={S.paceResultDate}>{form.endDate}</div>
+                    <div style={S.paceResultSub}>
+                      {Math.ceil((new Date(form.endDate)-new Date(form.startDate))/(1000*60*60*24))} ימים מהיום
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{fontSize:11,color:"var(--txs)",marginTop:6}}>הסיום מחושב לפי ימי הלימוד שתבחר למטה</div>
+            </>
           ) : daysMode ? (
-            <Fld label="בכמה ימים אתה רוצה לסיים?">
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <input style={{...S.inp, flex:1}} type="number" min={1} value={daysCount}
-                  onChange={e=>setDaysCount(Math.max(1,Number(e.target.value)))}
-                  aria-label="מספר ימים לסיום"/>
-                {form.endDate && <span style={{fontSize:12,color:"var(--gd)",fontWeight:700,whiteSpace:"nowrap"}}>
-                  עד {form.endDate}
-                </span>}
-              </div>
-            </Fld>
+            <>
+              <Fld label="בכמה ימים אתה רוצה לסיים?">
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <button style={S.paceStepper} onClick={()=>setDaysCount(v=>Math.max(1,v-1))} aria-label="הפחת">−</button>
+                  <span style={S.paceVal}>{daysCount}</span>
+                  <button style={S.paceStepper} onClick={()=>setDaysCount(v=>v+1)} aria-label="הוסף">+</button>
+                  <span style={{fontSize:13,color:"var(--txm)",fontWeight:600}}>ימים</span>
+                </div>
+              </Fld>
+              {form.endDate && (
+                <div style={S.paceResult}>
+                  <span style={S.paceResultIcon}>📅</span>
+                  <div>
+                    <div style={S.paceResultLabel}>תאריך יעד</div>
+                    <div style={S.paceResultDate}>{form.endDate}</div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <Fld label="תאריך סיום מטרה">
               <input style={S.inp} type="date" value={form.endDate}
@@ -550,9 +835,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
         )}
         <div style={{height:80}}/>
       </div>
-      {valid && (
-        <button style={S.doneFab} onClick={()=>onSave(form)} aria-label="בוצע, שמור תוכנית">✓</button>
-      )}
+
       {confirmDelete && (
         <div style={S.overlay} role="dialog" aria-modal="true" aria-labelledby="dlg2-title"
           onClick={() => setConfirmDelete(false)}>
@@ -1041,6 +1324,7 @@ const S = {
   planMeta:{display:"flex",gap:12,fontSize:11,color:"var(--txs)",marginTop:8,flexWrap:"wrap"},
   pctBadge:{background:"var(--gl)",borderRadius:20,padding:"4px 10px",fontSize:13,fontWeight:800,color:"var(--gd)",flexShrink:0,alignSelf:"flex-start"},
   cardDeleteIcon:{background:"var(--red-bg)",border:"1.5px solid var(--red-border)",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,cursor:"pointer",flexShrink:0},
+  cardNoteBtn:{background:"#FCEAF7",border:"1.5px solid #E8B8E0",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,cursor:"pointer",flexShrink:0},
   deleteFullBtn:{width:"100%",padding:"14px 0",marginTop:12,background:"var(--red-bg)",border:"1.5px solid var(--red-border)",borderRadius:R,fontSize:15,fontWeight:700,color:"var(--red)",cursor:"pointer",fontFamily:"inherit"},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24},
   dialog:{background:"var(--sur)",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:320,textAlign:"center",boxShadow:"0 8px 40px #0005"},
@@ -1155,6 +1439,24 @@ const S = {
   introBtn:{marginTop:28,width:"100%",padding:"16px",background:"var(--g)",color:"#fff",border:"none",borderRadius:R,fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 18px #25d36635",minHeight:50},
   todayNavBtn:{background:"none",border:"1.5px solid var(--g)",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"var(--g)",cursor:"pointer",fontFamily:"inherit"},
   pbFill:{height:"100%",background:"var(--g)",borderRadius:99,transition:"width 0.4s ease"},
+  // home notes section — Apple Notes inspired + fuchsia
+  homeNotesWrap:{margin:"12px 16px 4px",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 16px #9B127028"},
+  homeNotesCover:{background:"linear-gradient(135deg,#7B0D5E,#B5158A)",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"},
+  homeNotesCoverTitle:{color:"#fff",fontWeight:800,fontSize:15},
+  homeNoteAddBtn:{background:"rgba(255,255,255,0.2)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"5px 14px",fontSize:12,fontWeight:800,color:"#fff",cursor:"pointer",fontFamily:"inherit"},
+  homeNotesList:{background:"var(--sur)"},
+  homeNotesEmpty:{textAlign:"center",padding:"20px 16px",color:"#7B0D5E",fontSize:13,fontWeight:600},
+  homeNoteCard:{display:"flex",alignItems:"stretch",borderBottom:"1px solid #F0DCF0",padding:0},
+  homeNoteAccent:{width:3,flexShrink:0,background:"linear-gradient(180deg,#B5158A,#E040A0)"},
+  homeNoteBody:{flex:1,minWidth:0,padding:"11px 14px 11px 10px"},
+  homeNoteText:{fontSize:14,fontWeight:700,color:"var(--tx)",lineHeight:1.3},
+  homeNotePreview:{fontSize:12,color:"var(--txs)",marginTop:2,lineHeight:1.4},
+  homeNoteFooter:{display:"flex",alignItems:"center",gap:6,marginTop:6,flexWrap:"wrap"},
+  homeNotePlan:{fontSize:10,fontWeight:800,color:"#B5158A",background:"#FCEAF7",borderRadius:8,padding:"2px 7px"},
+  homeNotePageRef:{fontSize:10,fontWeight:700,color:"#9B4080",background:"#F5D6EE",borderRadius:8,padding:"2px 7px"},
+  homeNoteDate:{fontSize:10,color:"var(--txs)",marginRight:"auto"},
+  notesSectionHeader:{fontSize:11,fontWeight:800,color:"#7B0D5E",padding:"10px 14px 6px",background:"#FAF0F8",borderBottom:"1px solid #F0DCF0",letterSpacing:0.3},
+  homeNoteExpanded:{fontSize:13,color:"var(--tx)",lineHeight:1.8,marginTop:6,whiteSpace:"pre-wrap"},
   // notes tab
   noteCard:{background:"var(--sur)",borderRadius:R,marginBottom:12,boxShadow:"0 2px 10px #25d36612",overflow:"hidden",animation:"cardIn 0.3s ease both"},
   noteCardHeader:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",padding:"14px 14px 12px",cursor:"pointer",gap:8},
@@ -1165,14 +1467,21 @@ const S = {
   noteExpandArrow:{fontSize:14,color:"var(--txs)"},
   noteDelete:{background:"none",border:"none",fontSize:14,color:"var(--txs)",cursor:"pointer",padding:"4px",lineHeight:1,minWidth:28,minHeight:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:6},
   noteContent:{padding:"0 14px 16px",fontSize:14,color:"var(--txm)",lineHeight:1.7,whiteSpace:"pre-wrap",borderTop:"1px solid var(--gl)"},
-  noteAddPanel:{background:"var(--sur)",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxShadow:"0 -4px 32px #0004"},
+  noteAddPanel:{background:"var(--sur)",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxShadow:"0 -4px 32px #0004",fontFamily:"'Heebo','Assistant','Rubik',sans-serif",direction:"rtl"},
   // days mode toggle
   daysModeRow:{display:"flex",gap:0,marginBottom:12,borderRadius:RS,overflow:"hidden",border:"1.5px solid var(--gm)"},
   daysModeBtn:{flex:1,padding:"10px 8px",border:"none",background:"var(--sur)",fontSize:13,fontWeight:700,color:"var(--txm)",cursor:"pointer",fontFamily:"inherit"},
   daysModeBtnActive:{background:"var(--g)",color:"#fff"},
+  paceStepper:{width:40,height:40,borderRadius:10,background:"var(--gl)",border:"1.5px solid var(--gm)",fontSize:22,fontWeight:700,color:"var(--gd)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1},
+  paceVal:{fontSize:26,fontWeight:900,color:"var(--g)",minWidth:44,textAlign:"center"},
+  paceResult:{display:"flex",alignItems:"center",gap:12,background:"var(--gl)",borderRadius:12,padding:"12px 14px",marginTop:10,border:"1px solid var(--gm)"},
+  paceResultIcon:{fontSize:24},
+  paceResultLabel:{fontSize:11,fontWeight:700,color:"var(--gd)",textTransform:"uppercase",letterSpacing:0.5},
+  paceResultDate:{fontSize:18,fontWeight:900,color:"var(--gd)",marginTop:2},
+  paceResultSub:{fontSize:11,color:"var(--txs)",marginTop:1},
   // accessibility panel
   a11yOverlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"},
-  a11yPanel:{background:"var(--sur)",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxShadow:"0 -4px 32px #0004"},
+  a11yPanel:{background:"var(--sur)",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxShadow:"0 -4px 32px #0004",fontFamily:"'Heebo','Assistant','Rubik',sans-serif",direction:"rtl"},
   a11yTitle:{fontSize:17,fontWeight:900,color:"var(--tx)",marginBottom:20,textAlign:"center"},
   a11ySection:{marginBottom:18},
   a11ySectionTitle:{fontSize:11,fontWeight:800,color:"var(--gd)",letterSpacing:0.7,textTransform:"uppercase",marginBottom:10},
@@ -1189,7 +1498,7 @@ const S = {
 };
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
 
   :root {
     --bg: #f2faf6;
