@@ -445,7 +445,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
   return (
     <div style={S.screen}>
       <TopBar title={initial?"עריכת תוכנית":"יצירת תוכנית חדשה"} onBack={onBack}
-        rightEl={<ControlBtns/>}/>
+        backLabel="סיימתי" rightEl={<ControlBtns/>}/>
       <div style={S.scrollArea}>
         <Sec title="פרטי התוכנית">
           <Fld label="שם התוכנית">
@@ -895,12 +895,16 @@ function ProgressTab({ plan, onUpdate }) {
   );
 }
 
-function TopBar({ title, onBack, rightEl }) {
+function TopBar({ title, onBack, rightEl, backLabel }) {
   return (
     <header style={S.topBar}>
       {rightEl || <div style={{width:60}}/>}
       <span style={S.topBarTitle}>{title}</span>
-      <button style={S.backBtn} onClick={onBack} aria-label="חזור">›</button>
+      <button style={{...S.backBtn, ...(backLabel?{fontSize:14,gap:4,flexDirection:"row-reverse"}:{})}}
+        onClick={onBack} aria-label={backLabel||"חזור"}>
+        {backLabel && <span style={{fontWeight:700}}>{backLabel}</span>}
+        ›
+      </button>
     </header>
   );
 }
