@@ -1,10 +1,155 @@
 import { useState, useMemo, useEffect, useContext, createContext, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const DAYS_HE = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
-const DAYS_FULL_HE = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
-const MONTHS_HE = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-const UNIT_TYPES = ["עמוד","פרק","סימן","דף","נושא","שיעור","פסקה","חלק"];
+// ── Language data ──────────────────────────────────────────────────────────
+const LANG_DATA = {
+  he: {
+    dir: "rtl",
+    days:      ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],
+    daysFull:  ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"],
+    months:    ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"],
+    units:     ["עמוד","פרק","סימן","דף","נושא","שיעור","פסקה","חלק"],
+    quotes:    ["העיקר הוא ההתמדה, לא ההספק.","כל יום לימוד הוא נצחון קטן.","מעט בקביעות — עדיף על הרבה לעיתים.","התמדה היא סוד ההצלחה.","לימוד יום אחד — בנין לעולם.","גדולים מעשים קטנים שנעשים בקביעות.","טיפה אחר טיפה ממלאת את הים."],
+    t: {
+      appName:"המתמידים", appSub:"ניהול סדר הלימוד שלך",
+      back:"חזור", save:"שמור", cancel:"ביטול", delete:"מחק", edit:"עריכה", add:"הוסף", close:"סגור ✕",
+      noPlans:"אין עדיין תוכניות", newPlan:"+ תוכנית חדשה", deletePlan:"מחיקת תוכנית",
+      confirmDelete:"האם למחוק את התוכנית?", undone:"פעולה זו אינה ניתנת לביטול",
+      planDetails:"פרטי התוכנית", planName:"שם התוכנית", planNamePh:"למשל: לימוד משנה",
+      totalUnits:"סה״כ יחידות", startDate:"תאריך התחלה", endDate:"תאריך סיום",
+      schedule:"לוח זמנים", fixedDate:"תאריך קבוע", byDays:"לפי ימים", byPace:"לפי ההספק שלי",
+      daysToFinish:"בכמה ימים אתה רוצה לסיים?", pagesPerDay:"כמה יחידות אתה לומד ביום?",
+      restDays:"ימי מנוחה", restDaysWeekly:"ימי מנוחה קבועים בשבוע",
+      specificRest:"ימי מנוחה ספציפיים", addRestDay:"הוסף יום מנוחה",
+      preview:"תצוגה מקדימה", studyDays:"ימי לימוד", unitsPerDay:"יחידות ליום",
+      createPlan:"צור תוכנית לימוד", saveChanges:"שמור שינויים", editPlan:"עריכת תוכנית",
+      calendar:"לוח שנה", today:"היום", todayExcl:"היום!", restToday:"יום מנוחה היום",
+      legend:"מקרא", studyDay:"לימוד", restDay:"מנוחה", completed:"הושלם", completedToday:"הושלם היום",
+      totalStudyDays:"סה״כ ימי לימוד", daysCompleted:"ימים הושלמו",
+      calHint:"לחץ על יום לסימון כהושלם", end:"סוף", prevMonth:"‹ הקודם", nextMonth:"הבא ›",
+      ahead:"מקדים את לוח הזמנים", onSchedule:"בדיוק לפי התוכנית", behind:"מאחר מהתוכנית",
+      done:"בוצע", planned:"מתוכנן", remaining:"נותר", stats:"סטטיסטיקות",
+      myNotebook:"הפנקס שלי", learned:"למדתי", generalNotes:"הערות כלליות",
+      byBook:"לפי ספר", general:"כללית",
+      emptyNotebook:"הפנקס ריק", noInsights:"עדיין אין תובנות", noNotes:"עדיין אין הערות",
+      addFirst:"לחץ + כדי להוסיף הערה ראשונה",
+      addNote:"הוסף הערה", newNote:"+ הערה חדשה", newInsight:"+ תובנה חדשה",
+      titleOpt:"כותרת (אופציונלי)", whatLearned:"מה למדתי *", pageRef:"עמוד / פרק (אופציונלי)",
+      notePh:"רשום כאן את הסיכום, התובנה, או הרעיון...",
+      saveInsight:"שמור תובנה ✓", deleteNote:"מחק תובנה",
+      a11ySettings:"הגדרות נגישות", textSize:"גודל טקסט", display:"תצוגה",
+      highContrast:"ניגודיות גבוהה", reduceMotion:"הפחתת תנועה",
+      lightMode:"בהיר", darkMode:"כהה",
+      introTitle:"טיפים לשימוש נכון", letsStart:"בואו נתחיל ←",
+      overdue:"עבר המועד", daysLeft:"ימים נותרו", createdBy:"נוצר על ידי בנימין יונה",
+      day:"יום", month:"חודש", year:"שנה",
+      markComplete:"סמן את כל התוכנית כהושלמה", congrats:"כל הכבוד!",
+      finishedAll:"סיימת את כל התוכנית", returnToPlan:"חזור לתוכנית",
+      noNotesYet:"עדיין אין הערות – לחץ + הוסף",
+    }
+  },
+  en: {
+    dir: "ltr",
+    days:      ["Su","Mo","Tu","We","Th","Fr","Sa"],
+    daysFull:  ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+    months:    ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    units:     ["Page","Chapter","Section","Sheet","Topic","Lesson","Paragraph","Part"],
+    quotes:    ["Consistency is the key, not speed.","Every study day is a small victory.","A little regularly beats a lot occasionally.","Perseverance is the secret to success.","One day of learning — a building for life.","Small actions done consistently are great.","Drop by drop the sea is filled."],
+    t: {
+      appName:"The Steadfast", appSub:"Manage your study schedule",
+      back:"Back", save:"Save", cancel:"Cancel", delete:"Delete", edit:"Edit", add:"Add", close:"Close ✕",
+      noPlans:"No plans yet", newPlan:"+ New Plan", deletePlan:"Delete Plan",
+      confirmDelete:"Delete this plan?", undone:"This action cannot be undone",
+      planDetails:"Plan Details", planName:"Plan Name", planNamePh:"e.g.: Mishnah Study",
+      totalUnits:"Total Units", startDate:"Start Date", endDate:"End Date",
+      schedule:"Schedule", fixedDate:"Fixed Date", byDays:"By Days", byPace:"By My Pace",
+      daysToFinish:"How many days to finish?", pagesPerDay:"How many units per day?",
+      restDays:"Rest Days", restDaysWeekly:"Weekly Rest Days",
+      specificRest:"Specific Rest Days", addRestDay:"Add Rest Day",
+      preview:"Preview", studyDays:"Study Days", unitsPerDay:"Units/Day",
+      createPlan:"Create Study Plan", saveChanges:"Save Changes", editPlan:"Edit Plan",
+      calendar:"Calendar", today:"Today", todayExcl:"Today!", restToday:"Rest day today",
+      legend:"Legend", studyDay:"Study", restDay:"Rest", completed:"Completed", completedToday:"Done Today",
+      totalStudyDays:"Total Study Days", daysCompleted:"Days Completed",
+      calHint:"Tap a day to mark as complete", end:"End", prevMonth:"‹ Prev", nextMonth:"Next ›",
+      ahead:"Ahead of schedule", onSchedule:"On schedule", behind:"Behind schedule",
+      done:"Done", planned:"Planned", remaining:"Remaining", stats:"Statistics",
+      myNotebook:"My Notebook", learned:"Learned", generalNotes:"General Notes",
+      byBook:"By Book", general:"General",
+      emptyNotebook:"Notebook is empty", noInsights:"No insights yet", noNotes:"No notes yet",
+      addFirst:"Tap + to add your first note",
+      addNote:"Add Note", newNote:"+ New Note", newInsight:"+ New Insight",
+      titleOpt:"Title (optional)", whatLearned:"What I learned *", pageRef:"Page / Chapter (optional)",
+      notePh:"Write your summary, insight, or idea here...",
+      saveInsight:"Save ✓", deleteNote:"Delete Note",
+      a11ySettings:"Accessibility Settings", textSize:"Text Size", display:"Display",
+      highContrast:"High Contrast", reduceMotion:"Reduce Motion",
+      lightMode:"Light", darkMode:"Dark",
+      introTitle:"Getting Started Tips", letsStart:"Let's Begin →",
+      overdue:"Overdue", daysLeft:"days left", createdBy:"Created by Benjamin Yonah",
+      day:"Day", month:"Month", year:"Year",
+      markComplete:"Mark entire plan as complete", congrats:"Congratulations!",
+      finishedAll:"You completed the entire plan", returnToPlan:"Return to Plan",
+      noNotesYet:"No notes yet — tap + Add",
+    }
+  },
+  ru: {
+    dir: "ltr",
+    days:      ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"],
+    daysFull:  ["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"],
+    months:    ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],
+    units:     ["Страница","Глава","Раздел","Лист","Тема","Урок","Абзац","Часть"],
+    quotes:    ["Главное — постоянство, а не скорость.","Каждый день учёбы — маленькая победа.","Понемногу регулярно — лучше, чем много изредка.","Упорство — секрет успеха.","День учёбы — вклад в вечность.","Малые дела, делаемые постоянно, — велики.","Капля за каплей море наполняется."],
+    t: {
+      appName:"Постоянство", appSub:"Управление расписанием учёбы",
+      back:"Назад", save:"Сохранить", cancel:"Отмена", delete:"Удалить", edit:"Изменить", add:"Добавить", close:"Закрыть ✕",
+      noPlans:"Планов пока нет", newPlan:"+ Новый план", deletePlan:"Удалить план",
+      confirmDelete:"Удалить этот план?", undone:"Это действие нельзя отменить",
+      planDetails:"Детали плана", planName:"Название плана", planNamePh:"Напр.: Изучение Мишны",
+      totalUnits:"Всего единиц", startDate:"Дата начала", endDate:"Дата окончания",
+      schedule:"Расписание", fixedDate:"Фиксированная дата", byDays:"По дням", byPace:"По моему темпу",
+      daysToFinish:"За сколько дней хотите закончить?", pagesPerDay:"Сколько единиц в день?",
+      restDays:"Дни отдыха", restDaysWeekly:"Регулярные дни отдыха",
+      specificRest:"Особые дни отдыха", addRestDay:"Добавить день отдыха",
+      preview:"Предпросмотр", studyDays:"Дни учёбы", unitsPerDay:"Единиц/день",
+      createPlan:"Создать план", saveChanges:"Сохранить изменения", editPlan:"Редактировать план",
+      calendar:"Календарь", today:"Сегодня", todayExcl:"Сегодня!", restToday:"Сегодня день отдыха",
+      legend:"Легенда", studyDay:"Учёба", restDay:"Отдых", completed:"Выполнено", completedToday:"Выполнено сегодня",
+      totalStudyDays:"Всего дней учёбы", daysCompleted:"Дней выполнено",
+      calHint:"Нажмите на день для отметки", end:"Конец", prevMonth:"‹ Пред.", nextMonth:"След. ›",
+      ahead:"Опережаете расписание", onSchedule:"По расписанию", behind:"Отстаёте от расписания",
+      done:"Выполнено", planned:"Запланировано", remaining:"Осталось", stats:"Статистика",
+      myNotebook:"Мой блокнот", learned:"Изученное", generalNotes:"Общие заметки",
+      byBook:"По книге", general:"Общее",
+      emptyNotebook:"Блокнот пуст", noInsights:"Пока нет выводов", noNotes:"Пока нет заметок",
+      addFirst:"Нажмите + чтобы добавить первую заметку",
+      addNote:"Добавить заметку", newNote:"+ Новая заметка", newInsight:"+ Новый вывод",
+      titleOpt:"Заголовок (необязательно)", whatLearned:"Что я изучил *", pageRef:"Страница / Глава (необязательно)",
+      notePh:"Напишите здесь резюме, вывод или идею...",
+      saveInsight:"Сохранить ✓", deleteNote:"Удалить заметку",
+      a11ySettings:"Настройки доступности", textSize:"Размер текста", display:"Дисплей",
+      highContrast:"Высокий контраст", reduceMotion:"Уменьшить анимацию",
+      lightMode:"Светлая", darkMode:"Тёмная",
+      introTitle:"Советы по использованию", letsStart:"Начнём →",
+      overdue:"Просрочено", daysLeft:"дней осталось", createdBy:"Создано Биньямином Йоной",
+      day:"День", month:"Месяц", year:"Год",
+      markComplete:"Отметить весь план как выполненный", congrats:"Поздравляем!",
+      finishedAll:"Вы завершили весь план", returnToPlan:"Вернуться к плану",
+      noNotesYet:"Заметок пока нет — нажмите + Добавить",
+    }
+  }
+};
+
+// ── Convenience: current lang data ────────────────────────────────────────
+const LangCtx = createContext({ lang:"he", setLang:()=>{} });
+function useLang() { return useContext(LangCtx); }
+function useT()   { const { lang } = useLang(); return LANG_DATA[lang].t; }
+
+// Legacy aliases kept for backward compat inside buildSchedule/formatRange
+const DAYS_HE      = LANG_DATA.he.days;
+const DAYS_FULL_HE = LANG_DATA.he.daysFull;
+const MONTHS_HE    = LANG_DATA.he.months;
+const UNIT_TYPES   = LANG_DATA.he.units;
 
 // Parses "YYYY-MM-DD" as local time to avoid timezone bugs
 function parseDateKey(k) {
@@ -191,21 +336,32 @@ export default function App() {
 
   const a11yValue = { fs, setFs, hc, setHc, rm, setRm };
 
-  if (showIntro) return (
-    <DarkCtx.Provider value={{ dark, toggle: toggleDark }}>
-      <A11yCtx.Provider value={a11yValue}>
-        <div style={S.root}>
+  const [lang, setLangRaw] = useState(() => { try { return localStorage.getItem("hmLang") || "he"; } catch { return "he"; } });
+  const setLang = v => { setLangRaw(v); try { localStorage.setItem("hmLang", v); } catch {} };
 
-          <IntroScreen onDone={() => {
-            try { localStorage.setItem("hmIntroSeen","1"); } catch {}
-            setShowIntro(false);
-          }}/>
-        </div>
-      </A11yCtx.Provider>
-    </DarkCtx.Provider>
+  useEffect(() => {
+    const ld = LANG_DATA[lang];
+    document.documentElement.setAttribute("lang", lang);
+    document.documentElement.setAttribute("dir", ld.dir);
+  }, [lang]);
+
+  if (showIntro) return (
+    <LangCtx.Provider value={{ lang, setLang }}>
+      <DarkCtx.Provider value={{ dark, toggle: toggleDark }}>
+        <A11yCtx.Provider value={a11yValue}>
+          <div style={S.root}>
+            <IntroScreen onDone={() => {
+              try { localStorage.setItem("hmIntroSeen","1"); } catch {}
+              setShowIntro(false);
+            }}/>
+          </div>
+        </A11yCtx.Provider>
+      </DarkCtx.Provider>
+    </LangCtx.Provider>
   );
 
   return (
+    <LangCtx.Provider value={{ lang, setLang }}>
     <DarkCtx.Provider value={{ dark, toggle: toggleDark }}>
       <A11yCtx.Provider value={a11yValue}>
         <div style={S.root}>
@@ -242,16 +398,42 @@ export default function App() {
         </div>
       </A11yCtx.Provider>
     </DarkCtx.Provider>
+    </LangCtx.Provider>
   );
 }
 
 function DarkToggleBtn() {
   const { dark, toggle } = useDark();
+  const t = useT();
   return (
     <button style={S.darkToggle} onClick={toggle}
-      aria-label={dark ? "עבור למצב בהיר" : "עבור למצב כהה"}>
-      {dark ? "בהיר" : "כהה"}
+      aria-label={dark ? t.lightMode : t.darkMode}>
+      {dark ? t.lightMode : t.darkMode}
     </button>
+  );
+}
+
+function LangBtn() {
+  const { lang, setLang } = useLang();
+  const langs = [["he","עב"],["en","EN"],["ru","RU"]];
+  return (
+    <div style={{display:"flex",gap:2}}>
+      {langs.map(([code, label]) => (
+        <button key={code}
+          style={{...S.darkToggle,
+            fontWeight: lang===code ? 900 : 400,
+            color: lang===code ? "var(--g)" : "var(--txm)",
+            fontSize: 12,
+            padding:"4px 6px",
+            minWidth:28,
+          }}
+          onClick={() => setLang(code)}
+          aria-label={`Switch to ${code}`}
+          aria-pressed={lang===code}>
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -317,6 +499,7 @@ function A11yBtn() {
 function ControlBtns() {
   return (
     <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <LangBtn/>
       <DarkToggleBtn/>
       <A11yBtn/>
     </div>
