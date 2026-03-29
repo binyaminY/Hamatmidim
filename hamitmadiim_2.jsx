@@ -722,13 +722,13 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
           <div style={S.homeNotesWrap}>
             <div style={S.homeNotesCover}>
               <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={onOpenNotebook}>
-                <span style={S.homeNotesCoverTitle}>הפנקס שלי ›</span>
+                <span style={S.homeNotesCoverTitle}>{t.myNotebook} ›</span>
               </div>
-              <button style={S.homeNoteAddBtn} onClick={openNoteForm} aria-label="הוסף הערה">+ הוסף</button>
+              <button style={S.homeNoteAddBtn} onClick={openNoteForm} aria-label={t.addNote}>+ {t.add}</button>
             </div>
             <div style={S.homeNotesList}>
               {!hasAny ? (
-                <div style={{...S.homeNotesEmpty, cursor:"pointer"}} onClick={openNoteForm}>+ עדיין אין הערות — לחץ להוספה</div>
+                <div style={{...S.homeNotesEmpty, cursor:"pointer"}} onClick={openNoteForm}>+ {t.noNotesYet}</div>
               ) : (
                 <>
                   {/* הערות כלליות */}
