@@ -20,6 +20,12 @@ function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
 function uid() { return Math.random().toString(36).slice(2,9); }
 function todayKey() { return dateKey(new Date()); }
 
+function fmtDate(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return `${parseInt(d)} ב${MONTHS_HE[parseInt(m)-1]} ${y}`;
+}
+
 function isValidPlan(p) {
   return p && typeof p === "object" &&
     typeof p.id === "string" &&
@@ -169,6 +175,14 @@ export default function App() {
   };
 
   useEffect(() => {
+    const el = document.createElement("style");
+    el.id = "hm-global-css";
+    el.textContent = CSS;
+    document.head.appendChild(el);
+    return () => { document.head.removeChild(el); };
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute("data-dark", dark ? "true" : "false");
     document.documentElement.setAttribute("data-fs", fs);
     document.documentElement.setAttribute("data-hc", hc ? "true" : "false");
@@ -181,7 +195,7 @@ export default function App() {
     <DarkCtx.Provider value={{ dark, toggle: toggleDark }}>
       <A11yCtx.Provider value={a11yValue}>
         <div style={S.root}>
-          <style>{CSS}</style>
+
           <IntroScreen onDone={() => {
             try { localStorage.setItem("hmIntroSeen","1"); } catch {}
             setShowIntro(false);
@@ -195,7 +209,7 @@ export default function App() {
     <DarkCtx.Provider value={{ dark, toggle: toggleDark }}>
       <A11yCtx.Provider value={a11yValue}>
         <div style={S.root}>
-          <style>{CSS}</style>
+
           {screen === "plans" && (
             <PlansScreen plans={plans} activePlanId={activePlanId}
               onSelect={id => { setActivePlanId(id); setScreen("calendar"); }}
@@ -236,7 +250,7 @@ function DarkToggleBtn() {
   return (
     <button style={S.darkToggle} onClick={toggle}
       aria-label={dark ? "עבור למצב בהיר" : "עבור למצב כהה"}>
-      {dark ? "☀️" : "🌙"}
+      {dark ? "בהיר" : "כהה"}
     </button>
   );
 }
@@ -249,13 +263,13 @@ function A11yBtn() {
     <>
       <button style={S.darkToggle} onClick={() => setOpen(v => !v)}
         aria-label="הגדרות נגישות" aria-expanded={open}>
-        ♿
-      </button>
+        נגישות
+</button>
       {open && createPortal(
         <div style={S.a11yOverlay} onClick={() => setOpen(false)}
           role="dialog" aria-modal="true" aria-labelledby="a11y-title">
           <div style={S.a11yPanel} onClick={e => e.stopPropagation()}>
-            <div id="a11y-title" style={S.a11yTitle}>הגדרות נגישות ♿</div>
+            <div id="a11y-title" style={S.a11yTitle}>הגדרות נגישות</div>
 
             <div style={S.a11ySection}>
               <div style={S.a11ySectionTitle}>גודל טקסט</div>
@@ -316,7 +330,7 @@ function IntroScreen({ onDone }) {
         <div style={{position:"absolute",top:12,left:12}}>
           <ControlBtns/>
         </div>
-        <div style={S.introEmoji}>💡</div>
+        <div style={S.introEmoji}>✦</div>
         <div style={S.introTitle}>טיפים לשימוש נכון</div>
         <div style={S.introText}>
           אם אתה רק מתחיל לבנות את סדר הלימוד שלך, ואין לך אחד כזה קבוע —
@@ -326,7 +340,7 @@ function IntroScreen({ onDone }) {
           תחושת ההצלחה תעזור לך לרצות להמשיך.
         </div>
         <div style={{...S.introText, fontWeight:800, color:"var(--gd)", marginTop:8}}>
-          העיקר הוא ההתמדה, לא ההספק. 📖
+          העיקר הוא ההתמדה, לא ההספק.
         </div>
         <button style={S.introBtn} onClick={onDone}>בואו נתחיל ←</button>
       </div>
@@ -373,7 +387,7 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
         <div style={S.noteCardLeft}>
           {n.pageRef && <span style={S.notePageRef}>{n.pageRef}</span>}
           <span style={S.noteTitle}>{n.title || n.content.slice(0,50)+(n.content.length>50?"...":"")}</span>
-          <span style={S.noteDate}>{n.date}</span>
+          <span style={S.noteDate}>{fmtDate(n.date)}</span>
         </div>
         <button style={S.noteDelete} onClick={e => { e.stopPropagation(); onDelete(n.id); }} aria-label="מחק">✕</button>
       </div>
@@ -384,18 +398,18 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
 
   return (
     <div style={S.screen}>
-      <TopBar title="הפנקס שלי 📓" onBack={onBack} rightEl={<ControlBtns/>}/>
+      <TopBar title="הפנקס שלי" onBack={onBack} rightEl={<ControlBtns/>}/>
       <div style={S.tabContent}>
         {(generalNotes||[]).length === 0 && plans.every(p => !(p.notes||[]).length) && (
           <div style={S.emptyWrap}>
-            <div style={S.emptyIcon}>📓</div>
+            <div style={S.emptyIcon}>✦</div>
             <div style={S.emptyTitle}>הפנקס ריק</div>
             <div style={S.emptyDesc}>לחץ + כדי להוסיף הערה ראשונה</div>
           </div>
         )}
         {(generalNotes||[]).length > 0 && (
           <div style={{marginTop:12}}>
-            <div style={S.notesSectionHeader}>📌 הערות כלליות</div>
+            <div style={S.notesSectionHeader}>הערות כלליות</div>
             {[...(generalNotes||[])].reverse().map(n => renderCard(n, deleteGeneral, null))}
           </div>
         )}
@@ -403,7 +417,7 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
           <div key={p.id} style={{marginTop:12,borderRadius:12,overflow:"hidden",border:`1.5px solid ${SECTION_COLORS[idx % SECTION_COLORS.length].border}`}}>
             <div style={{background:SECTION_COLORS[idx % SECTION_COLORS.length].bg, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between"}}
               onClick={() => onSelectNotes(p.id)}>
-              <span style={{fontSize:13,fontWeight:800,color:SECTION_COLORS[idx % SECTION_COLORS.length].text}}>📚 {p.name}</span>
+              <span style={{fontSize:13,fontWeight:800,color:SECTION_COLORS[idx % SECTION_COLORS.length].text}}>{p.name}</span>
               <span style={{color:SECTION_COLORS[idx % SECTION_COLORS.length].text, fontSize:14}}>›</span>
             </div>
             {[...(p.notes||[])].reverse().map(n => renderCard(n, (id) => deletePlanNote(p, id), () => onSelectNotes(p.id)))}
@@ -415,10 +429,10 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
       {addOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setAddOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>✏️ הוספת הערה</div>
+            <div style={S.a11yTitle}>+ הוספת הערה</div>
             <div style={{...S.daysModeRow, marginBottom:14}}>
-              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(false)}>📚 לספר</button>
-              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(true)}>📌 כללית</button>
+              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(false)}>לספר</button>
+              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(true)}>כללית</button>
             </div>
             {!noteGeneral && plans.length > 0 && (
               <div style={S.fld}>
@@ -494,9 +508,6 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
         <div style={S.appTitle}>המתמידים</div>
         <div style={S.appSub}>ניהול סדר הלימוד שלך</div>
       </div>
-      <div style={S.appQuoteWrap}>
-        <span style={S.appQuoteBubble}>{getDailyQuote()}</span>
-      </div>
       {(() => {
         const gNotes = (generalNotes || []).slice().reverse();
         const planGroups = plans.map(p => ({ plan: p, notes: (p.notes||[]).slice().reverse() })).filter(g => g.notes.length > 0);
@@ -511,7 +522,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
               {n.title && <div style={S.homeNotePreview}>{n.content.slice(0,55)}{n.content.length>55?"...":""}</div>}
               <div style={S.homeNoteFooter}>
                 {n.pageRef && <span style={S.homeNotePageRef}>{n.pageRef}</span>}
-                <span style={S.homeNoteDate}>{n.date}</span>
+                <span style={S.homeNoteDate}>{fmtDate(n.date)}</span>
               </div>
             </div>
           </div>
@@ -520,27 +531,26 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
           <div style={S.homeNotesWrap}>
             <div style={S.homeNotesCover}>
               <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={onOpenNotebook}>
-                <span style={{fontSize:20}}>📓</span>
                 <span style={S.homeNotesCoverTitle}>הפנקס שלי ›</span>
               </div>
               <button style={S.homeNoteAddBtn} onClick={openNoteForm} aria-label="הוסף הערה">+ הוסף</button>
             </div>
             <div style={S.homeNotesList}>
               {!hasAny ? (
-                <div style={{...S.homeNotesEmpty, cursor:"pointer"}} onClick={openNoteForm}>✏️ עדיין אין הערות — לחץ להוספה</div>
+                <div style={{...S.homeNotesEmpty, cursor:"pointer"}} onClick={openNoteForm}>+ עדיין אין הערות — לחץ להוספה</div>
               ) : (
                 <>
                   {/* הערות כלליות */}
                   {gNotes.length > 0 && (
                     <>
-                      <div style={S.notesSectionHeader}>📌 הערות כלליות</div>
+                      <div style={S.notesSectionHeader}>הערות כלליות</div>
                       {gNotes.map((n,i) => renderCard(n,i,gNotes,null))}
                     </>
                   )}
                   {/* הערות לפי ספר */}
                   {planGroups.map(({ plan, notes }) => (
                     <div key={plan.id}>
-                      <div style={{...S.notesSectionHeader, cursor:"pointer"}} onClick={() => onSelectNotes(plan.id)}>📚 {plan.name} ›</div>
+                      <div style={{...S.notesSectionHeader, cursor:"pointer"}} onClick={() => onSelectNotes(plan.id)}>{plan.name} ›</div>
                       {notes.map((n,i) => renderCard(n,i,notes,() => onSelectNotes(plan.id)))}
                     </div>
                   ))}
@@ -563,7 +573,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
           const endD = new Date(plan.endDate);
           const now = new Date();
           const daysLeft = Math.ceil((endD - now) / (1000*60*60*24));
-          const endLabel = daysLeft < 0 ? "עבר המועד" : daysLeft === 0 ? "היום!" : daysLeft <= 7 ? `${daysLeft} ימים נותרו` : plan.endDate;
+          const endLabel = daysLeft < 0 ? "עבר המועד" : daysLeft === 0 ? "היום!" : daysLeft <= 7 ? `${daysLeft} ימים נותרו` : fmtDate(plan.endDate);
           const endColor = daysLeft < 0 ? "#e74c3c" : daysLeft <= 7 ? "#f0a500" : "var(--txs)";
           return (
             <div key={plan.id}
@@ -575,28 +585,22 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
               onClick={() => onSelect(plan.id)}
               onKeyDown={e => { if (e.key==="Enter"||e.key===" ") { e.preventDefault(); onSelect(plan.id); }}}>
               <div style={S.planCardRow}>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-                  <div style={S.planIcon} aria-hidden="true">📚</div>
-                  <button style={S.cardNoteBtn}
-                    onClick={e => { e.stopPropagation(); setNotePlanId(plan.id); setNoteTitle(""); setNoteContent(""); setNotePageRef(""); setNoteOpen(true); }}
-                    aria-label={`הוסף הערה ל${plan.name}`}>✏️</button>
-                </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={S.planName}>{plan.name}</div>
                   <div style={S.planMeta}>
-                    <span style={{color:endColor, fontWeight: daysLeft<=7?"800":"400"}}>📅 {endLabel}</span>
-                    {(() => { const s = calcStreak(plan); return s > 1 ? <span style={{color:"#f0a500",fontWeight:800}}>🔥 {s} ימים ברצף</span> : null; })()}
+                    <span style={{color:endColor, fontWeight: daysLeft<=7?"800":"400"}}>{endLabel}</span>
+                    {(() => { const s = calcStreak(plan); return s > 1 ? <span style={{color:"#f0a500",fontWeight:800}}>★ {s} ימים ברצף</span> : null; })()}
                   </div>
                 </div>
                 <div style={S.pctBadge} aria-label={`${pct}% הושלם`}>{pct}%</div>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>
                 <div style={{flex:1}}>
                   <ProgressBar pct={pct} />
                 </div>
                 <button style={S.cardDeleteIcon}
                   onClick={e => { e.stopPropagation(); setConfirmId(plan.id); }}
-                  aria-label={`מחק תוכנית ${plan.name}`}>🗑</button>
+                  aria-label={`מחק תוכנית ${plan.name}`}>×</button>
               </div>
             </div>
           );
@@ -608,13 +612,13 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
       {noteOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setNoteOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>✏️ הוספת הערה</div>
+            <div style={S.a11yTitle}>+ הוספת הערה</div>
             {/* סוג הערה */}
             <div style={{...S.daysModeRow, marginBottom:14}}>
               <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}}
-                onClick={() => setNoteGeneral(false)}>📚 לספר</button>
+                onClick={() => setNoteGeneral(false)}>לספר</button>
               <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}}
-                onClick={() => setNoteGeneral(true)}>📌 כללית</button>
+                onClick={() => setNoteGeneral(true)}>כללית</button>
             </div>
             {!noteGeneral && plans.length > 0 && (
               <div style={S.fld}>
@@ -653,7 +657,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
         <div style={S.overlay} role="dialog" aria-modal="true" aria-labelledby="dlg-title"
           onClick={() => setConfirmId(null)}>
           <div style={S.dialog} onClick={e => e.stopPropagation()}>
-            <div style={S.dialogIcon} aria-hidden="true">🗑</div>
+            <div style={S.dialogIcon} aria-hidden="true">×</div>
             <div id="dlg-title" style={S.dialogTitle}>מחיקת תוכנית</div>
             <div style={S.dialogMsg}>האם למחוק את תוכנית<br/><strong>"{confirmPlan?.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>פעולה זו אינה ניתנת לביטול</span></div>
             <div style={S.dialogBtns}>
@@ -759,7 +763,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
               </Fld>
               {form.endDate && form.startDate && (
                 <div style={S.paceResult}>
-                  <span style={S.paceResultIcon}>📅</span>
+                  <span style={S.paceResultIcon}>◷</span>
                   <div>
                     <div style={S.paceResultLabel}>תאריך יעד מחושב</div>
                     <div style={S.paceResultDate}>{form.endDate}</div>
@@ -783,7 +787,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
               </Fld>
               {form.endDate && (
                 <div style={S.paceResult}>
-                  <span style={S.paceResultIcon}>📅</span>
+                  <span style={S.paceResultIcon}>◷</span>
                   <div>
                     <div style={S.paceResultLabel}>תאריך יעד</div>
                     <div style={S.paceResultDate}>{form.endDate}</div>
@@ -831,7 +835,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
         </button>
         {initial && onDelete && (
           <button style={S.deleteFullBtn} onClick={() => setConfirmDelete(true)}
-            aria-label="מחק תוכנית זו">🗑 מחק תוכנית זו</button>
+            aria-label="מחק תוכנית זו">מחק תוכנית זו</button>
         )}
         <div style={{height:80}}/>
       </div>
@@ -840,7 +844,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
         <div style={S.overlay} role="dialog" aria-modal="true" aria-labelledby="dlg2-title"
           onClick={() => setConfirmDelete(false)}>
           <div style={S.dialog} onClick={e => e.stopPropagation()}>
-            <div style={S.dialogIcon} aria-hidden="true">🗑</div>
+            <div style={S.dialogIcon} aria-hidden="true">×</div>
             <div id="dlg2-title" style={S.dialogTitle}>מחיקת תוכנית</div>
             <div style={S.dialogMsg}>האם למחוק את תוכנית<br/><strong>"{form.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>פעולה זו אינה ניתנת לביטול</span></div>
             <div style={S.dialogBtns}>
@@ -893,7 +897,7 @@ function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
           </div>
         }/>
       <div style={S.tabs} role="tablist" aria-label="תצוגות">
-        {[["calendar","לוח שנה"],["progress","התקדמות"],["notes","למדתי 📖"]].map(([s,l])=>(
+        {[["calendar","לוח שנה"],["progress","התקדמות"],["notes","למדתי"]].map(([s,l])=>(
           <button key={s} role="tab" aria-selected={screen===s}
             style={{...S.tab,...(screen===s?S.tabActive:{})}}
             onClick={()=>setScreen(s)}>{l}</button>
@@ -987,7 +991,7 @@ function NotesTab({ plan, onUpdate }) {
     <div style={S.tabContent}>
       {notes.length === 0 ? (
         <div style={S.emptyWrap}>
-          <div style={S.emptyIcon}>📖</div>
+          <div style={S.emptyIcon}>✦</div>
           <div style={S.emptyTitle}>עדיין אין תובנות</div>
           <div style={S.emptyDesc}>לחץ על הכפתור למטה כדי להוסיף את מה שלמדת</div>
         </div>
@@ -1021,7 +1025,7 @@ function NotesTab({ plan, onUpdate }) {
       {addOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setAddOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>💡 מה למדתי</div>
+            <div style={S.a11yTitle}>מה למדתי</div>
             <div style={S.fld}>
               <label style={S.fldLbl}>כותרת (אופציונלי)</label>
               <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={title}
@@ -1225,7 +1229,7 @@ function ProgressTab({ plan, onUpdate }) {
       <div style={{...S.statusBanner,background:statusInfo.bg,display:"flex",justifyContent:"space-between",alignItems:"center"}}
         aria-live="polite" aria-label={statusInfo.txt}>
         <span style={{...S.statusTxt,color:statusInfo.color}}>{statusInfo.txt}</span>
-        {streak > 0 && <span style={{fontSize:13,fontWeight:800,color:"#f0a500"}} aria-label={`${streak} ימים ברצף`}>🔥 {streak} ברצף</span>}
+        {streak > 0 && <span style={{fontSize:13,fontWeight:800,color:"#f0a500"}} aria-label={`${streak} ימים ברצף`}>★ {streak} ברצף</span>}
       </div>
 
       <div style={S.bigPctWrap} aria-label={`${pct}% הושלם, ${actual} מתוך ${total} ${plan.unitLabel}ים`}>
@@ -1312,7 +1316,7 @@ const S = {
   topBarTitle:{fontSize:17,fontWeight:800,color:"var(--tx)",textAlign:"center",flex:1},
   backBtn:{background:"none",border:"none",fontSize:24,color:"var(--gd)",cursor:"pointer",padding:"8px",fontWeight:700,lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"},
   editBtn:{background:"var(--gl)",border:"none",borderRadius:RS,padding:"8px 12px",fontSize:13,fontWeight:700,color:"var(--gd)",cursor:"pointer",minHeight:36},
-  darkToggle:{background:"none",border:"none",fontSize:20,cursor:"pointer",padding:"6px 8px",borderRadius:8,lineHeight:1,minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center"},
+  darkToggle:{background:"rgba(255,255,255,0.18)",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",padding:"6px 10px",borderRadius:20,lineHeight:1,minHeight:30,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",letterSpacing:0.3},
   tabs:{display:"flex",background:"var(--sur)",borderBottom:"1px solid var(--gl)",padding:"0 16px"},
   tab:{flex:1,padding:"12px 4px",background:"none",border:"none",borderBottom:"3px solid transparent",fontSize:14,fontWeight:700,color:"var(--txm)",cursor:"pointer",minHeight:44},
   tabActive:{borderBottomColor:"var(--g)",color:"var(--g)"},
@@ -1543,7 +1547,18 @@ const CSS = `
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: var(--bg); transition: background 0.25s; }
+  html, body {
+    background: var(--bg);
+    transition: background 0.25s;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 
   @keyframes cardIn { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
   @keyframes fabPulse { 0%,100%{box-shadow:0 6px 24px #25d36645;}50%{box-shadow:0 6px 32px #25d36670;} }
