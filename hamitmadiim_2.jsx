@@ -165,10 +165,12 @@ function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
 function uid() { return Math.random().toString(36).slice(2,9); }
 function todayKey() { return dateKey(new Date()); }
 
-function fmtDate(dateStr) {
+function fmtDate(dateStr, months) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
-  return `${parseInt(d)} ב${MONTHS_HE[parseInt(m)-1]} ${y}`;
+  const mm = months || MONTHS_HE;
+  const prefix = mm === MONTHS_HE ? "ב" : " ";
+  return `${parseInt(d)}${prefix}${mm[parseInt(m)-1]} ${y}`;
 }
 
 function isValidPlan(p) {
@@ -227,9 +229,10 @@ const QUOTES = [
   "טיפה אחר טיפה ממלאת את הים.",
 ];
 
-function getDailyQuote() {
+function getDailyQuote(quotes) {
+  const q = quotes || QUOTES;
   const day = new Date().getDay() + new Date().getDate();
-  return QUOTES[day % QUOTES.length];
+  return q[day % q.length];
 }
 
 function calcStreak(plan) {
@@ -440,22 +443,23 @@ function LangBtn() {
 function A11yBtn() {
   const [open, setOpen] = useState(false);
   const { fs, setFs, hc, setHc, rm, setRm } = useA11y();
+  const t = useT();
   const fsLabels = [["normal","א"],["lg","א+"],["xl","א++"],["xxl","א+++"]];
   return (
     <>
       <button style={S.darkToggle} onClick={() => setOpen(v => !v)}
-        aria-label="הגדרות נגישות" aria-expanded={open}>
-        נגישות
+        aria-label={t.a11ySettings} aria-expanded={open}>
+        {t.a11ySettings}
 </button>
       {open && createPortal(
         <div style={S.a11yOverlay} onClick={() => setOpen(false)}
           role="dialog" aria-modal="true" aria-labelledby="a11y-title">
           <div style={S.a11yPanel} onClick={e => e.stopPropagation()}>
-            <div id="a11y-title" style={S.a11yTitle}>הגדרות נגישות</div>
+            <div id="a11y-title" style={S.a11yTitle}>{t.a11ySettings}</div>
 
             <div style={S.a11ySection}>
-              <div style={S.a11ySectionTitle}>גודל טקסט</div>
-              <div style={S.a11yFsRow} role="group" aria-label="גודל טקסט">
+              <div style={S.a11ySectionTitle}>{t.textSize}</div>
+              <div style={S.a11yFsRow} role="group" aria-label={t.textSize}>
                 {fsLabels.map(([v, label]) => (
                   <button key={v}
                     style={{...S.a11yFsBtn,...(fs===v?S.a11yFsBtnActive:{})}}
@@ -467,26 +471,26 @@ function A11yBtn() {
             </div>
 
             <div style={S.a11ySection}>
-              <div style={S.a11ySectionTitle}>תצוגה</div>
+              <div style={S.a11ySectionTitle}>{t.display}</div>
               <div style={S.a11yToggleRow}>
-                <span style={S.a11yToggleLbl}>ניגודיות גבוהה</span>
+                <span style={S.a11yToggleLbl}>{t.highContrast}</span>
                 <button style={{...S.a11ySwitch,...(hc?S.a11ySwitchOn:{})}}
                   onClick={() => setHc(!hc)} role="switch" aria-checked={hc}
-                  aria-label="ניגודיות גבוהה">
+                  aria-label={t.highContrast}>
                   <div style={{...S.a11yThumb,...(hc?S.a11yThumbOn:{})}}/>
                 </button>
               </div>
               <div style={S.a11yToggleRow}>
-                <span style={S.a11yToggleLbl}>הפחתת תנועה</span>
+                <span style={S.a11yToggleLbl}>{t.reduceMotion}</span>
                 <button style={{...S.a11ySwitch,...(rm?S.a11ySwitchOn:{})}}
                   onClick={() => setRm(!rm)} role="switch" aria-checked={rm}
-                  aria-label="הפחתת תנועה">
+                  aria-label={t.reduceMotion}>
                   <div style={{...S.a11yThumb,...(rm?S.a11yThumbOn:{})}}/>
                 </button>
               </div>
             </div>
 
-            <button style={S.a11yClose} onClick={() => setOpen(false)}>סגור ✕</button>
+            <button style={S.a11yClose} onClick={() => setOpen(false)}>{t.close}</button>
           </div>
         </div>,
         document.body
@@ -507,6 +511,7 @@ function ControlBtns() {
 }
 
 function IntroScreen({ onDone }) {
+  const t = useT();
   return (
     <div style={S.introWrap}>
       <div style={S.introCard}>
@@ -514,7 +519,7 @@ function IntroScreen({ onDone }) {
           <ControlBtns/>
         </div>
         <div style={S.introEmoji}>✦</div>
-        <div style={S.introTitle}>טיפים לשימוש נכון</div>
+        <div style={S.introTitle}>{t.introTitle}</div>
         <div style={S.introText}>
           אם אתה רק מתחיל לבנות את סדר הלימוד שלך, ואין לך אחד כזה קבוע —
           מומלץ להתחיל בקצת ולא להעמיס הרבה.
@@ -525,7 +530,7 @@ function IntroScreen({ onDone }) {
         <div style={{...S.introText, fontWeight:800, color:"var(--gd)", marginTop:8}}>
           העיקר הוא ההתמדה, לא ההספק.
         </div>
-        <button style={S.introBtn} onClick={onDone}>בואו נתחיל ←</button>
+        <button style={S.introBtn} onClick={onDone}>{t.letsStart}</button>
       </div>
     </div>
   );
@@ -541,6 +546,7 @@ const SECTION_COLORS = [
 ];
 
 function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePlan, onSelectNotes, onBack }) {
+  const t = useT();
   const [addOpen, setAddOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
@@ -572,7 +578,7 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
           <span style={S.noteTitle}>{n.title || n.content.slice(0,50)+(n.content.length>50?"...":"")}</span>
           <span style={S.noteDate}>{fmtDate(n.date)}</span>
         </div>
-        <button style={S.noteDelete} onClick={e => { e.stopPropagation(); onDelete(n.id); }} aria-label="מחק">✕</button>
+        <button style={S.noteDelete} onClick={e => { e.stopPropagation(); onDelete(n.id); }} aria-label={t.delete}>✕</button>
       </div>
       {n.title && <div style={S.noteContent}>{n.content}</div>}
       {!n.title && <div style={S.noteContent}>{n.content}</div>}
@@ -581,18 +587,18 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
 
   return (
     <div style={S.screen}>
-      <TopBar title="הפנקס שלי" onBack={onBack} rightEl={<ControlBtns/>}/>
+      <TopBar title={t.myNotebook} onBack={onBack} rightEl={<ControlBtns/>}/>
       <div style={S.tabContent}>
         {(generalNotes||[]).length === 0 && plans.every(p => !(p.notes||[]).length) && (
           <div style={S.emptyWrap}>
             <div style={S.emptyIcon}>✦</div>
-            <div style={S.emptyTitle}>הפנקס ריק</div>
-            <div style={S.emptyDesc}>לחץ + כדי להוסיף הערה ראשונה</div>
+            <div style={S.emptyTitle}>{t.emptyNotebook}</div>
+            <div style={S.emptyDesc}>{t.addFirst}</div>
           </div>
         )}
         {(generalNotes||[]).length > 0 && (
           <div style={{marginTop:12}}>
-            <div style={S.notesSectionHeader}>הערות כלליות</div>
+            <div style={S.notesSectionHeader}>{t.generalNotes}</div>
             {[...(generalNotes||[])].reverse().map(n => renderCard(n, deleteGeneral, null))}
           </div>
         )}
@@ -608,14 +614,14 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
         ))}
         <div style={{height:80}}/>
       </div>
-      <button style={S.fab} onClick={() => setAddOpen(true)} aria-label="הוסף הערה">+ הערה חדשה</button>
+      <button style={S.fab} onClick={() => setAddOpen(true)} aria-label={t.addNote}>{"+ " + t.addNote}</button>
       {addOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setAddOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>+ הוספת הערה</div>
+            <div style={S.a11yTitle}>{"+ " + t.addNote}</div>
             <div style={{...S.daysModeRow, marginBottom:14}}>
-              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(false)}>לספר</button>
-              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(true)}>כללית</button>
+              <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(false)}>{t.byBook}</button>
+              <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}} onClick={() => setNoteGeneral(true)}>{t.general}</button>
             </div>
             {!noteGeneral && plans.length > 0 && (
               <div style={S.fld}>
@@ -626,20 +632,20 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
               </div>
             )}
             <div style={S.fld}>
-              <label style={S.fldLbl}>כותרת (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.titleOpt}</label>
               <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={noteTitle} onChange={e => setNoteTitle(e.target.value)} maxLength={80}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>מה למדתי *</label>
-              <textarea style={{...S.inp, minHeight:100, resize:"vertical"}} placeholder="רשום כאן..." value={noteContent} onChange={e => setNoteContent(e.target.value)} maxLength={1000}/>
+              <label style={S.fldLbl}>{t.whatLearned}</label>
+              <textarea style={{...S.inp, minHeight:100, resize:"vertical"}} placeholder={t.notePh} value={noteContent} onChange={e => setNoteContent(e.target.value)} maxLength={1000}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>עמוד / פרק (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.pageRef}</label>
               <input style={S.inp} placeholder="למשל: עמ׳ 45–62" value={notePageRef} onChange={e => setNotePageRef(e.target.value)} maxLength={40}/>
             </div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
-              <button style={S.dialogCancel} onClick={() => setAddOpen(false)}>ביטול</button>
-              <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: noteContent.trim()?1:0.5}} onClick={saveNote} disabled={!noteContent.trim()}>שמור ✓</button>
+              <button style={S.dialogCancel} onClick={() => setAddOpen(false)}>{t.cancel}</button>
+              <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: noteContent.trim()?1:0.5}} onClick={saveNote} disabled={!noteContent.trim()}>{t.save}</button>
             </div>
           </div>
         </div>,
@@ -650,6 +656,8 @@ function NotebookScreen({ plans, generalNotes, onUpdateGeneralNotes, onUpdatePla
 }
 
 function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDelete, onUpdatePlan, generalNotes, onUpdateGeneralNotes, onOpenNotebook }) {
+  const t = useT();
+  const { lang } = useLang();
   const [confirmId, setConfirmId] = useState(null);
   const confirmPlan = plans.find(p => p.id === confirmId);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -747,7 +755,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
         {plans.length === 0 && (
           <div style={S.emptyWrap}>
             <div style={S.emptyIcon}>🧑‍🎓</div>
-            <div style={S.emptyTitle}>אין עדיין תוכניות</div>
+            <div style={S.emptyTitle}>{t.noPlans}</div>
             <div style={S.emptyDesc}>צור את תוכנית הלימוד הראשונה שלך</div>
           </div>
         )}
@@ -756,7 +764,7 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
           const endD = new Date(plan.endDate);
           const now = new Date();
           const daysLeft = Math.ceil((endD - now) / (1000*60*60*24));
-          const endLabel = daysLeft < 0 ? "עבר המועד" : daysLeft === 0 ? "היום!" : daysLeft <= 7 ? `${daysLeft} ימים נותרו` : fmtDate(plan.endDate);
+          const endLabel = daysLeft < 0 ? t.overdue : daysLeft === 0 ? t.todayExcl : daysLeft <= 7 ? `${daysLeft} ${t.daysLeft}` : fmtDate(plan.endDate, LANG_DATA[lang].months);
           const endColor = daysLeft < 0 ? "#e74c3c" : daysLeft <= 7 ? "#f0a500" : "var(--txs)";
           return (
             <div key={plan.id}
@@ -788,20 +796,20 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
             </div>
           );
         })}
-        <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:12,color:"var(--txs)"}}>נוצר על ידי בנימין יונה</div>
+        <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:12,color:"var(--txs)"}}>{t.createdBy}</div>
         <div style={{height:100}}/>
       </div>
-      <button style={S.fab} onClick={onNew} className="fab-pulse" aria-label="יצירת תוכנית חדשה">+ תוכנית חדשה</button>
+      <button style={S.fab} onClick={onNew} className="fab-pulse" aria-label={t.newPlan}>{t.newPlan}</button>
       {noteOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setNoteOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>+ הוספת הערה</div>
+            <div style={S.a11yTitle}>{"+ " + t.addNote}</div>
             {/* סוג הערה */}
             <div style={{...S.daysModeRow, marginBottom:14}}>
               <button style={{...S.daysModeBtn,...(!noteGeneral?S.daysModeBtnActive:{})}}
-                onClick={() => setNoteGeneral(false)}>לספר</button>
+                onClick={() => setNoteGeneral(false)}>{t.byBook}</button>
               <button style={{...S.daysModeBtn,...(noteGeneral?S.daysModeBtnActive:{})}}
-                onClick={() => setNoteGeneral(true)}>כללית</button>
+                onClick={() => setNoteGeneral(true)}>{t.general}</button>
             </div>
             {!noteGeneral && plans.length > 0 && (
               <div style={S.fld}>
@@ -812,25 +820,25 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
               </div>
             )}
             <div style={S.fld}>
-              <label style={S.fldLbl}>כותרת (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.titleOpt}</label>
               <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={noteTitle}
                 onChange={e => setNoteTitle(e.target.value)} maxLength={80}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>מה למדתי *</label>
+              <label style={S.fldLbl}>{t.whatLearned}</label>
               <textarea style={{...S.inp, minHeight:100, resize:"vertical"}}
-                placeholder="רשום כאן את הסיכום, התובנה, או הרעיון..."
+                placeholder={t.notePh}
                 value={noteContent} onChange={e => setNoteContent(e.target.value)} maxLength={1000}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>עמוד / פרק (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.pageRef}</label>
               <input style={S.inp} placeholder="למשל: עמ׳ 45–62" value={notePageRef}
                 onChange={e => setNotePageRef(e.target.value)} maxLength={40}/>
             </div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
-              <button style={S.dialogCancel} onClick={() => setNoteOpen(false)}>ביטול</button>
+              <button style={S.dialogCancel} onClick={() => setNoteOpen(false)}>{t.cancel}</button>
               <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: noteContent.trim() ? 1 : 0.5}}
-                onClick={saveNote} disabled={!noteContent.trim()}>שמור תובנה ✓</button>
+                onClick={saveNote} disabled={!noteContent.trim()}>{t.saveInsight}</button>
             </div>
           </div>
         </div>,
@@ -841,11 +849,11 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
           onClick={() => setConfirmId(null)}>
           <div style={S.dialog} onClick={e => e.stopPropagation()}>
             <div style={S.dialogIcon} aria-hidden="true">×</div>
-            <div id="dlg-title" style={S.dialogTitle}>מחיקת תוכנית</div>
-            <div style={S.dialogMsg}>האם למחוק את תוכנית<br/><strong>"{confirmPlan?.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>פעולה זו אינה ניתנת לביטול</span></div>
+            <div id="dlg-title" style={S.dialogTitle}>{t.deletePlan}</div>
+            <div style={S.dialogMsg}>{t.confirmDelete}<br/><strong>"{confirmPlan?.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>{t.undone}</span></div>
             <div style={S.dialogBtns}>
-              <button style={S.dialogCancel} onClick={() => setConfirmId(null)}>ביטול</button>
-              <button style={S.dialogConfirm} onClick={() => { onDelete(confirmId); setConfirmId(null); }}>מחק</button>
+              <button style={S.dialogCancel} onClick={() => setConfirmId(null)}>{t.cancel}</button>
+              <button style={S.dialogConfirm} onClick={() => { onDelete(confirmId); setConfirmId(null); }}>{t.delete}</button>
             </div>
           </div>
         </div>
@@ -855,6 +863,8 @@ function PlansScreen({ plans, activePlanId, onSelect, onSelectNotes, onNew, onDe
 }
 
 function CreateScreen({ initial, onSave, onBack, onDelete }) {
+  const t = useT();
+  const { lang } = useLang();
   const td = dateKey(new Date());
   const [form, setForm] = useState(initial || {
     name:"", subject:"", totalUnits:30, unitLabel:"עמוד",
@@ -898,23 +908,23 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
   const valid = form.name && form.totalUnits>0 && form.startDate && form.endDate && datesValid;
   return (
     <div style={S.screen}>
-      <TopBar title={initial?"עריכת תוכנית":"יצירת תוכנית חדשה"} onBack={onBack}
+      <TopBar title={initial?t.editPlan:t.createPlan} onBack={onBack}
         rightEl={<ControlBtns/>}/>
       <div style={S.scrollArea}>
-        <Sec title="פרטי התוכנית">
-          <Fld label="שם התוכנית">
+        <Sec title={t.planDetails}>
+          <Fld label={t.planName}>
             <input style={S.inp} value={form.name} onChange={e=>set("name",e.target.value)}
-              placeholder="למשל: לימוד משנה" aria-label="שם התוכנית"/>
+              placeholder={t.planNamePh} aria-label={t.planName}/>
           </Fld>
         </Sec>
-        <Sec title="מספר הדפים">
-          <Fld label="סה״כ דפים">
+        <Sec title={t.totalUnits}>
+          <Fld label={t.totalUnits}>
             <input style={S.inp} type="number" min={1} value={form.totalUnits}
               onChange={e=>set("totalUnits",Number(e.target.value))} aria-label="מספר יחידות"/>
           </Fld>
         </Sec>
-        <Sec title="לוח זמנים">
-          <Fld label="תאריך התחלה">
+        <Sec title={t.schedule}>
+          <Fld label={t.startDate}>
             <input style={S.inp} type="date" value={form.startDate}
               onChange={e=>set("startDate",e.target.value)} aria-label="תאריך התחלה"/>
           </Fld>
@@ -922,15 +932,15 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
           <div style={S.daysModeRow}>
             <button style={{...S.daysModeBtn,...(!daysMode&&!paceMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setDaysMode(false);setPaceMode(false);}} aria-pressed={!daysMode&&!paceMode}>
-              תאריך קבוע
+              {t.fixedDate}
             </button>
             <button style={{...S.daysModeBtn,...(daysMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setDaysMode(true);setPaceMode(false);}} aria-pressed={daysMode}>
-              לפי ימים
+              {t.byDays}
             </button>
             <button style={{...S.daysModeBtn,...(paceMode?S.daysModeBtnActive:{})}}
               onClick={()=>{setPaceMode(true);setDaysMode(false);}} aria-pressed={paceMode}>
-              לפי ההספק שלי
+              {t.byPace}
             </button>
           </div>
 
@@ -960,7 +970,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
             </>
           ) : daysMode ? (
             <>
-              <Fld label="בכמה ימים אתה רוצה לסיים?">
+              <Fld label={t.daysToFinish}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <button style={S.paceStepper} onClick={()=>setDaysCount(v=>Math.max(1,v-1))} aria-label="הפחת">−</button>
                   <span style={S.paceVal}>{daysCount}</span>
@@ -979,9 +989,9 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
               )}
             </>
           ) : (
-            <Fld label="תאריך סיום מטרה">
+            <Fld label={t.endDate}>
               <input style={S.inp} type="date" value={form.endDate}
-                onChange={e=>set("endDate",e.target.value)} aria-label="תאריך סיום"/>
+                onChange={e=>set("endDate",e.target.value)} aria-label={t.endDate}/>
             </Fld>
           )}
           {!datesValid && (
@@ -990,10 +1000,10 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
             </div>
           )}
         </Sec>
-        <Sec title="ימי מנוחה קבועים בשבוע">
+        <Sec title={t.restDaysWeekly}>
           <div style={S.restHint}>בחר אילו ימים בשבוע הם תמיד ימי מנוחה (יחולו על כל השבועות)</div>
-          <div style={S.daysRow} role="group" aria-label="ימי מנוחה">
-            {DAYS_FULL_HE.map((d,i)=>(
+          <div style={S.daysRow} role="group" aria-label={t.restDays}>
+            {LANG_DATA[lang].daysFull.map((d,i)=>(
               <button key={i}
                 style={{...S.dayChip,...(form.restDays.includes(i)?S.dayChipRestOn:{})}}
                 onClick={()=>toggleRest(i)}
@@ -1004,21 +1014,21 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
         </Sec>
         {studyDays>0 && (
           <div style={S.previewCard} aria-live="polite">
-            <div style={S.previewTitle}>תצוגה מקדימה</div>
+            <div style={S.previewTitle}>{t.preview}</div>
             <div style={S.previewGrid}>
-              <PreviewStat label="ימי לימוד" val={studyDays}/>
-              <PreviewStat label="יחידות ליום" val={`~${perDay}`}/>
-              <PreviewStat label="סה״כ יחידות" val={form.totalUnits}/>
+              <PreviewStat label={t.studyDays} val={studyDays}/>
+              <PreviewStat label={t.unitsPerDay} val={`~${perDay}`}/>
+              <PreviewStat label={t.totalUnits} val={form.totalUnits}/>
             </div>
           </div>
         )}
         <button style={{...S.mainBtn, opacity:valid?1:0.45}} disabled={!valid}
           onClick={()=>onSave(form)} aria-disabled={!valid}>
-          {initial?"שמור שינויים":"צור תוכנית לימוד"}
+          {initial?t.saveChanges:t.createPlan}
         </button>
         {initial && onDelete && (
           <button style={S.deleteFullBtn} onClick={() => setConfirmDelete(true)}
-            aria-label="מחק תוכנית זו">מחק תוכנית זו</button>
+            aria-label={t.deletePlan}>{t.deletePlan}</button>
         )}
         <div style={{height:80}}/>
       </div>
@@ -1028,11 +1038,11 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
           onClick={() => setConfirmDelete(false)}>
           <div style={S.dialog} onClick={e => e.stopPropagation()}>
             <div style={S.dialogIcon} aria-hidden="true">×</div>
-            <div id="dlg2-title" style={S.dialogTitle}>מחיקת תוכנית</div>
-            <div style={S.dialogMsg}>האם למחוק את תוכנית<br/><strong>"{form.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>פעולה זו אינה ניתנת לביטול</span></div>
+            <div id="dlg2-title" style={S.dialogTitle}>{t.deletePlan}</div>
+            <div style={S.dialogMsg}>{t.confirmDelete}<br/><strong>"{form.name}"</strong>?<br/><span style={{fontSize:12,color:"var(--txs)"}}>{t.undone}</span></div>
             <div style={S.dialogBtns}>
-              <button style={S.dialogCancel} onClick={() => setConfirmDelete(false)}>ביטול</button>
-              <button style={S.dialogConfirm} onClick={() => onDelete(initial.id)}>מחק</button>
+              <button style={S.dialogCancel} onClick={() => setConfirmDelete(false)}>{t.cancel}</button>
+              <button style={S.dialogConfirm} onClick={() => onDelete(initial.id)}>{t.delete}</button>
             </div>
           </div>
         </div>
@@ -1042,6 +1052,7 @@ function CreateScreen({ initial, onSave, onBack, onDelete }) {
 }
 
 function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
+  const t = useT();
   const [showRestPanel, setShowRestPanel] = useState(false);
   const [rDay, setRDay] = useState("");
   const [rMonth, setRMonth] = useState("");
@@ -1076,11 +1087,11 @@ function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
         rightEl={
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <ControlBtns/>
-            <button style={S.editBtn} onClick={onEditPlan} aria-label="עריכת תוכנית">עריכה</button>
+            <button style={S.editBtn} onClick={onEditPlan} aria-label={t.editPlan}>{t.edit}</button>
           </div>
         }/>
       <div style={S.tabs} role="tablist" aria-label="תצוגות">
-        {[["calendar","לוח שנה"],["progress","התקדמות"],["notes","למדתי"]].map(([s,l])=>(
+        {[["calendar",t.calendar],["progress",t.stats],["notes",t.learned]].map(([s,l])=>(
           <button key={s} role="tab" aria-selected={screen===s}
             style={{...S.tab,...(screen===s?S.tabActive:{})}}
             onClick={()=>setScreen(s)}>{l}</button>
@@ -1089,12 +1100,12 @@ function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
 
       <div style={S.restToggleBar}
         role="button" aria-expanded={showRestPanel} tabIndex={0}
-        aria-label="ימי מנוחה ספציפיים"
+        aria-label={t.specificRest}
         onClick={()=>setShowRestPanel(v=>!v)}
         onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setShowRestPanel(v=>!v); }}}>
         <div style={S.restToggleLeft}>
           <span style={S.restToggleIcon} aria-hidden="true">🚫</span>
-          <span style={S.restToggleLabel}>ימי מנוחה ספציפיים</span>
+          <span style={S.restToggleLabel}>{t.specificRest}</span>
           {count > 0 && <span style={S.restToggleBadge} aria-label={`${count} ימי מנוחה`}>{count}</span>}
         </div>
         <span style={{...S.restToggleArrow, transform: showRestPanel ? "rotate(180deg)" : "rotate(0deg)"}} aria-hidden="true">▾</span>
@@ -1122,7 +1133,7 @@ function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
               <input id="rYear" style={{...S.datePickerInp, width:70}} type="number" placeholder="שנה"
                 value={rYear} onChange={e=>setRYear(e.target.value)} aria-label="שנה"/>
             </div>
-            <button style={S.specificRestAdd} onClick={addSpecificRest} aria-label="הוסף יום מנוחה">+ הוסף</button>
+            <button style={S.specificRestAdd} onClick={addSpecificRest} aria-label={t.addRestDay}>+ {t.add}</button>
           </div>
           {count > 0 && (
             <div style={S.specificRestList} role="list" aria-label="ימי מנוחה שנבחרו">
@@ -1146,6 +1157,7 @@ function PlanShell({ plan, screen, setScreen, onUpdate, onEditPlan }) {
 }
 
 function NotesTab({ plan, onUpdate }) {
+  const t = useT();
   const [addOpen, setAddOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -1175,8 +1187,8 @@ function NotesTab({ plan, onUpdate }) {
       {notes.length === 0 ? (
         <div style={S.emptyWrap}>
           <div style={S.emptyIcon}>✦</div>
-          <div style={S.emptyTitle}>עדיין אין תובנות</div>
-          <div style={S.emptyDesc}>לחץ על הכפתור למטה כדי להוסיף את מה שלמדת</div>
+          <div style={S.emptyTitle}>{t.noInsights}</div>
+          <div style={S.emptyDesc}>{t.noNotesYet}</div>
         </div>
       ) : (
         <div style={{paddingTop:12}}>
@@ -1192,7 +1204,7 @@ function NotesTab({ plan, onUpdate }) {
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
                   <span style={S.noteExpandArrow}>{expanded === note.id ? "▴" : "▾"}</span>
-                  <button style={S.noteDelete} onClick={e=>{e.stopPropagation(); deleteNote(note.id);}} aria-label="מחק תובנה">✕</button>
+                  <button style={S.noteDelete} onClick={e=>{e.stopPropagation(); deleteNote(note.id);}} aria-label={t.deleteNote}>✕</button>
                 </div>
               </div>
               {expanded === note.id && (
@@ -1203,32 +1215,32 @@ function NotesTab({ plan, onUpdate }) {
         </div>
       )}
 
-      <button style={S.fab} onClick={() => setAddOpen(true)} aria-label="הוסף תובנה">+ תובנה חדשה</button>
+      <button style={S.fab} onClick={() => setAddOpen(true)} aria-label={t.addNote}>{"+ " + t.addNote}</button>
 
       {addOpen && createPortal(
         <div style={S.a11yOverlay} onClick={() => setAddOpen(false)}>
           <div style={S.noteAddPanel} onClick={e => e.stopPropagation()}>
-            <div style={S.a11yTitle}>מה למדתי</div>
+            <div style={S.a11yTitle}>{t.whatLearned}</div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>כותרת (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.titleOpt}</label>
               <input style={S.inp} placeholder="למשל: תובנה על פרק א׳..." value={title}
                 onChange={e => setTitle(e.target.value)} maxLength={80}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>מה למדתי *</label>
+              <label style={S.fldLbl}>{t.whatLearned}</label>
               <textarea style={{...S.inp, minHeight:100, resize:"vertical"}}
-                placeholder="רשום כאן את הסיכום, התובנה, או הרעיון שרצית לשמור..."
+                placeholder={t.notePh}
                 value={content} onChange={e => setContent(e.target.value)} maxLength={1000}/>
             </div>
             <div style={S.fld}>
-              <label style={S.fldLbl}>עמוד / פרק (אופציונלי)</label>
+              <label style={S.fldLbl}>{t.pageRef}</label>
               <input style={S.inp} placeholder="למשל: עמ׳ 45–62" value={pageRef}
                 onChange={e => setPageRef(e.target.value)} maxLength={40}/>
             </div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
-              <button style={S.dialogCancel} onClick={() => { setTitle(""); setContent(""); setPageRef(""); setAddOpen(false); }}>ביטול</button>
+              <button style={S.dialogCancel} onClick={() => { setTitle(""); setContent(""); setPageRef(""); setAddOpen(false); }}>{t.cancel}</button>
               <button style={{...S.mainBtn, marginTop:0, flex:1, opacity: content.trim() ? 1 : 0.5}}
-                onClick={saveNote} disabled={!content.trim()}>שמור תובנה ✓</button>
+                onClick={saveNote} disabled={!content.trim()}>{t.saveInsight}</button>
             </div>
           </div>
         </div>,
@@ -1239,6 +1251,8 @@ function NotesTab({ plan, onUpdate }) {
 }
 
 function CalendarTab({ plan, onUpdate }) {
+  const t = useT();
+  const { lang } = useLang();
   const today = new Date();
   const [y, setY] = useState(today.getFullYear());
   const [m, setM] = useState(today.getMonth());
@@ -1285,24 +1299,24 @@ function CalendarTab({ plan, onUpdate }) {
   return (
     <div style={S.tabContent} role="tabpanel" aria-label="לוח שנה">
       <div style={todayTask?S.todayBanner:S.restBanner} aria-live="polite">
-        {todayTask?<><span style={S.todayLabel}>היום: </span>{formatRange(plan,todayTask.from,todayTask.to)}</>:<span>יום מנוחה היום 🌿</span>}
+        {todayTask?<><span style={S.todayLabel}>{t.today}: </span>{formatRange(plan,todayTask.from,todayTask.to)}</>:<span>{t.restToday} 🌿</span>}
       </div>
-      <div style={S.calHint}>לחץ על יום לסימון כהושלם — גם על ימי מנוחה</div>
+      <div style={S.calHint}>{t.calHint}</div>
       <div style={S.monthRow}>
-        <button style={S.navBtn} onClick={nextMonth} aria-label="חודש הבא">הבא ›</button>
+        <button style={S.navBtn} onClick={nextMonth} aria-label={t.nextMonth}>{t.nextMonth}</button>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          <span style={S.monthLabel} aria-live="polite">{MONTHS_HE[m]} {y}</span>
-          {!isCurrentMonth && <button style={S.todayNavBtn} onClick={goToday} aria-label="חזור להיום">← היום</button>}
+          <span style={S.monthLabel} aria-live="polite">{LANG_DATA[lang].months[m]} {y}</span>
+          {!isCurrentMonth && <button style={S.todayNavBtn} onClick={goToday} aria-label={t.today}>← {t.today}</button>}
         </div>
-        <button style={S.navBtn} onClick={prevMonth} aria-label="חודש קודם">‹ הקודם</button>
+        <button style={S.navBtn} onClick={prevMonth} aria-label={t.prevMonth}>{t.prevMonth}</button>
       </div>
-      <div style={S.calGrid} role="grid" aria-label={`לוח שנה ${MONTHS_HE[m]} ${y}`}>
-        {DAYS_HE.map(d=><div key={d} style={S.calHead} role="columnheader" aria-label={DAYS_FULL_HE[DAYS_HE.indexOf(d)]}>{d}</div>)}
+      <div style={S.calGrid} role="grid" aria-label={`${t.calendar} ${LANG_DATA[lang].months[m]} ${y}`}>
+        {LANG_DATA[lang].days.map((d,di)=><div key={d} style={S.calHead} role="columnheader" aria-label={LANG_DATA[lang].daysFull[di]}>{d}</div>)}
         {cells.map((d,i)=>{
           if(!d) return <div key={`empty-${y}-${m}-${i}`} role="gridcell"/>;
           const k=key(d),task=schedule[k],rest=isRest(d),done=isDone(d),today_=isToday(d);
           const restDone=rest&&isRestDone(d),isTapped=tapped===k,isLastDay=k===plan.endDate;
-          const ariaLabel = `${d} ב${MONTHS_HE[m]}${done?" — הושלם":rest?" — מנוחה":task?` — ${formatRange(plan,task.from,task.to)}`:""}`;
+          const ariaLabel = `${d} ${LANG_DATA[lang].months[m]}${done?" — "+t.completed:rest?" — "+t.restDay:task?" — "+formatRange(plan,task.from,task.to):""}`;
           return (
             <div key={k}
               role="gridcell"
@@ -1331,18 +1345,18 @@ function CalendarTab({ plan, onUpdate }) {
                 ...((done||restDone)&&isLastDay&&!today_?{color:"#7a5c00"}:{}),
               }} aria-hidden="true">{d}</span>
               {task&&!rest&&!isLastDay&&<span style={{...S.calTaskTxt,...(done?{color:"rgba(255,255,255,0.9)"}:{})}} aria-hidden="true">{done?"✓":""}</span>}
-              {task&&!rest&&isLastDay&&<span style={S.calLastLabel} aria-hidden="true">{done?"✓ סוף":"סוף"}</span>}
-              {rest&&<span style={{...S.restDot,...(restDone?{color:"rgba(255,255,255,0.9)"}:{})}} aria-hidden="true">{restDone?"✓ מנוחה":"מנוחה"}</span>}
+              {task&&!rest&&isLastDay&&<span style={S.calLastLabel} aria-hidden="true">{done?"✓ "+t.end:t.end}</span>}
+              {rest&&<span style={{...S.restDot,...(restDone?{color:"rgba(255,255,255,0.9)"}:{})}} aria-hidden="true">{restDone?"✓ "+t.restDay:t.restDay}</span>}
             </div>
           );
         })}
       </div>
-      <div style={S.legend} role="list" aria-label="מקרא">
-        <LegItem bg="var(--gl)" label="לימוד"/>
-        <LegItem bg="var(--red-bg)" border="1px solid var(--red-border)" label="מנוחה"/>
-        <LegItem bg="#25D366" label="הושלם"/>
-        <LegItem bg="#fff3b0" border="1px solid #f0c040" label="סוף"/>
-        <LegItem bg="transparent" border="2px solid #25D366" label="היום"/>
+      <div style={S.legend} role="list" aria-label={t.legend}>
+        <LegItem bg="var(--gl)" label={t.studyDay}/>
+        <LegItem bg="var(--red-bg)" border="1px solid var(--red-border)" label={t.restDay}/>
+        <LegItem bg="#25D366" label={t.completed}/>
+        <LegItem bg="#fff3b0" border="1px solid #f0c040" label={t.end}/>
+        <LegItem bg="transparent" border="2px solid #25D366" label={t.today}/>
       </div>
       {(()=>{
         const totalDays=Object.keys(schedule).length;
@@ -1350,11 +1364,11 @@ function CalendarTab({ plan, onUpdate }) {
         const pct=totalDays>0?Math.round((doneDays/totalDays)*100):0;
         return (
           <div style={S.calSummary} aria-label={`${doneDays} ימים הושלמו מתוך ${totalDays}, ${pct}% הושלם`}>
-            <div style={S.calSummaryItem}><span style={S.calSummaryVal}>{doneDays}</span><span style={S.calSummaryLbl}>ימים הושלמו</span></div>
+            <div style={S.calSummaryItem}><span style={S.calSummaryVal}>{doneDays}</span><span style={S.calSummaryLbl}>{t.daysCompleted}</span></div>
             <div style={S.calSummaryDivider} aria-hidden="true"/>
-            <div style={S.calSummaryItem}><span style={S.calSummaryVal}>{totalDays}</span><span style={S.calSummaryLbl}>סה״כ ימי לימוד</span></div>
+            <div style={S.calSummaryItem}><span style={S.calSummaryVal}>{totalDays}</span><span style={S.calSummaryLbl}>{t.totalStudyDays}</span></div>
             <div style={S.calSummaryDivider} aria-hidden="true"/>
-            <div style={S.calSummaryItem}><span style={{...S.calSummaryVal,color:"#25D366"}}>{pct}%</span><span style={S.calSummaryLbl}>הושלם</span></div>
+            <div style={S.calSummaryItem}><span style={{...S.calSummaryVal,color:"#25D366"}}>{pct}%</span><span style={S.calSummaryLbl}>{t.completed}</span></div>
           </div>
         );
       })()}
@@ -1364,6 +1378,8 @@ function CalendarTab({ plan, onUpdate }) {
 }
 
 function ProgressTab({ plan, onUpdate }) {
+  const t = useT();
+  const { lang } = useLang();
   const { dark } = useDark();
   const schedule = useMemo(()=>buildSchedule(plan),[plan]);
   const tk = todayKey();
@@ -1373,9 +1389,9 @@ function ProgressTab({ plan, onUpdate }) {
   const pct=Math.min(Math.round((actual/total)*100),100);
   const status=actual>=plannedDone?(actual>plannedDone?"ahead":"ontrack"):"behind";
   const statusInfo={
-    ahead:{txt:"מקדים את הלוח זמנים",color:dark?"#3dd68c":"#25D366",bg:dark?"#1a3327":"#d4f5e2"},
-    ontrack:{txt:"בדיוק לפי התוכנית",color:"#4a90d9",bg:dark?"#1a2535":"#deeeff"},
-    behind:{txt:"מאחר מהתוכנית",color:"#e05050",bg:dark?"#2a1515":"#fde8e8"}
+    ahead:{txt:t.ahead,color:dark?"#3dd68c":"#25D366",bg:dark?"#1a3327":"#d4f5e2"},
+    ontrack:{txt:t.onSchedule,color:"#4a90d9",bg:dark?"#1a2535":"#deeeff"},
+    behind:{txt:t.behind,color:"#e05050",bg:dark?"#2a1515":"#fde8e8"}
   }[status];
   const setCompleted=(n)=>onUpdate({...plan,completedUnits:Math.max(0,Math.min(n,total))});
   const days=useMemo(()=>Object.entries(schedule).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>({k,from:v.from,to:v.to,done:plan.completedDates?.[k]===true||plan.restDonesDates?.[k]===true})),[schedule,plan]);
@@ -1399,10 +1415,10 @@ function ProgressTab({ plan, onUpdate }) {
   if(showFinish) return(
     <div style={S.finishScreen} role="main" aria-label="סיום תוכנית">
       <div style={S.finishEmoji} aria-hidden="true">🎉</div>
-      <div style={S.finishTitle}>כל הכבוד!</div>
-      <div style={S.finishSub}>סיימת את כל התוכנית</div>
+      <div style={S.finishTitle}>{t.congrats}</div>
+      <div style={S.finishSub}>{t.finishedAll}</div>
       <div style={S.finishPlanName}>"{plan.name}"</div>
-      <button style={S.finishBtn} onClick={()=>setShowFinish(false)}>חזור לתוכנית</button>
+      <button style={S.finishBtn} onClick={()=>setShowFinish(false)}>{t.returnToPlan}</button>
     </div>
   );
   const streak = calcStreak(plan);
@@ -1421,15 +1437,15 @@ function ProgressTab({ plan, onUpdate }) {
         <ProgressBar pct={pct} height={14}/>
       </div>
 
-      <div style={S.statsGrid} role="list" aria-label="סטטיסטיקות">
-        <StatCard label="בוצע" val={actual} color="#25D366"/>
-        <StatCard label="מתוכנן" val={plannedDone} color="#4a90d9"/>
-        <StatCard label="נותר" val={Math.max(0,total-actual)} color="#f0a500"/>
+      <div style={S.statsGrid} role="list" aria-label={t.stats}>
+        <StatCard label={t.done} val={actual} color="#25D366"/>
+        <StatCard label={t.planned} val={plannedDone} color="#4a90d9"/>
+        <StatCard label={t.remaining} val={Math.max(0,total-actual)} color="#f0a500"/>
       </div>
 
       <div style={{display:"flex",gap:10,marginTop:16,alignItems:"center"}}>
         <button style={{...S.finishPlanBtn,margin:0,flex:1}} onClick={handleFinish}
-          aria-label="סמן את כל התוכנית כהושלמה">🏁 סיום</button>
+          aria-label={t.markComplete}>🏁 {t.end}</button>
         <div style={{...S.counterRow,padding:0,gap:10}} role="group" aria-label="עדכון ידני">
           <button style={S.counterBtn} onClick={()=>setCompleted(actual-1)} aria-label="הפחת יחידה">−</button>
           <span style={{...S.counterVal,minWidth:60,fontSize:14}} aria-label={`${actual} מתוך ${total}`}>{actual}/{total}</span>
@@ -1462,12 +1478,13 @@ function ProgressTab({ plan, onUpdate }) {
 }
 
 function TopBar({ title, onBack, rightEl, backLabel }) {
+  const t = useT();
   return (
     <header style={S.topBar}>
       {rightEl || <div style={{width:60}}/>}
       <span style={S.topBarTitle}>{title}</span>
       <button style={{...S.backBtn, ...(backLabel?{fontSize:14,gap:4,flexDirection:"row-reverse"}:{})}}
-        onClick={onBack} aria-label={backLabel||"חזור"}>
+        onClick={onBack} aria-label={backLabel||t.back}>
         {backLabel && <span style={{fontWeight:700}}>{backLabel}</span>}
         ›
       </button>
@@ -1484,7 +1501,7 @@ function PreviewStat({ label, val }) { return <div style={S.prevStat}><div style
 const R=16,RS=10;
 
 const S = {
-  root:{fontFamily:"'Heebo','Assistant','Rubik',sans-serif",background:"var(--bg)",minHeight:"100vh",maxWidth:480,margin:"0 auto",direction:"rtl",position:"relative"},
+  root:{fontFamily:"'Heebo','Assistant','Rubik',sans-serif",background:"var(--bg)",minHeight:"100vh",maxWidth:480,margin:"0 auto",position:"relative"},
   screen:{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--bg)"},
   scrollArea:{flex:1,overflowY:"auto",padding:"0 16px 20px"},
   tabContent:{flex:1,overflowY:"auto",padding:"0 16px 80px"},
